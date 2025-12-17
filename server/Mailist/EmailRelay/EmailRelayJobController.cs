@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using MimeKit;
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -72,6 +73,12 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
             return;
         }
 
+        // TODO: Check allowed senders
+        if (await distributionListService.IsSenderPermitted(distributionList))
+        {
+
+        }
+
         if (email.Header == null)
         {
             using MimeMessage? errorMessage = emailRelay.TooManyHeaders(email);
@@ -113,5 +120,20 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
 
         email.ProcessingCompletedTime = DateTime.UtcNow;
         await database.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string? GetActualSender(InboxEmail email)
+    {
+        if (email.Sender != null)
+        {
+            if (MailboxAddress.TryParse(email.Sender, out MailboxAddress mailboxAddress))
+                return mailboxAddress.Address;
+            else
+                return null;
+        }
+        else
+        {
+            return MailboxAddressHelper.FirstMailboxAddressOrDefault(email.From)?.Address;
+        }
     }
 }

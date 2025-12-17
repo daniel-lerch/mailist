@@ -23,6 +23,12 @@
         <PersonFilterEditor v-if="mode.name === 'default'" v-model="recipientsQuery" class="p-2" />
         <AdvancedFilterEditor v-else-if="mode.name === 'advanced'" v-model="recipientsQuery" class="p-2" />
       </div>
+      <div class="mb-2">Erlaubte Absender</div>
+      <div class="mb-4 rounded-lg bg-gray-100 dark:bg-gray-950">
+        <SelectButton v-model="senderFilterMode" :options="modes" optionLabel="label" :allowEmpty="false" />
+        <PersonFilterEditor v-if="senderFilterMode.name === 'default'" v-model="recipientsQuery" class="p-2" />
+        <AdvancedFilterEditor v-else-if="senderFilterMode.name === 'advanced'" v-model="recipientsQuery" class="p-2" />
+      </div>
       <Message v-if="error" severity="error" variant="simple" class="mb-4">{{ error }}</Message>
       <div class="flex flex-wrap gap-4">
         <Button type="button" label="Abbrechen" severity="secondary" variant="text" @click="cancel" />
@@ -66,6 +72,7 @@ const initialValue = props.id ? await getDistributionList(parseInt(props.id)) : 
 
 const modes = [{ name: "default", label: "Normaler Filter" }, { name: "advanced", label: "Erweiterter Filter (JSON)" }]
 const mode = ref(modes[0]!)
+const senderFilterMode = ref(modes[0]!)
 
 const alias = ref(initialValue?.alias ?? "")
 const newsletter = ref(initialValue?.newsletter ?? false)

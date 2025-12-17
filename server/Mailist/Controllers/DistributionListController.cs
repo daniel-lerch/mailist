@@ -62,16 +62,21 @@ public class DistributionListController : ControllerBase
     private async Task<DistributionList> AddCachedRecipientCount(EmailRelay.Entities.DistributionList dl)
     {
         JsonElement recipientsQuery = JsonElement.Parse(dl.RecipientsQuery);
+        JsonElement sendersQuery = JsonElement.Parse(dl.SendersQuery);
         int recipientCount = 0;
+        int senderCount = 0;
 
-        if (recipientsQuery.ValueKind != JsonValueKind.Null)
+        // TODO: Move caching into an own service and probably use separate cache entries for recipient and sender counts
+        if (recipientsQuery.ValueKind != JsonValueKind.Null || sendersQuery.ValueKind != JsonValueKind.Null)
         {
-            recipientCount = await memoryCache.GetOrCreateAsync(dl.Id, async cacheEntry =>
+            (recipientCount, senderCount) = await memoryCache.GetOrCreateAsync(dl.Id, async cacheEntry =>
             {
                 cacheEntry.SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
-                ChurchQueryRequest<IdNameEmail> query = new(recipientsQuery);
-                var recipients = await churchTools.ChurchQuery(query);
-                return recipients.Count;
+                ChurchQueryRequest<IdNameEmail> recipientsQueryRequest = new(recipientsQuery);
+                ChurchQueryRequest<IdNameEmail> sendersQueryRequest = new(sendersQuery);
+                var recipients = churchTools.ChurchQuery(recipientsQueryRequest);
+                var senders = churchTools.ChurchQuery(sendersQueryRequest);
+                return ((await recipients).Count, (await senders).Count);
             });
         }
 
@@ -81,7 +86,9 @@ public class DistributionListController : ControllerBase
             Alias = dl.Alias,
             Newsletter = dl.Flags.HasFlag(DistributionListFlags.Newsletter),
             RecipientsQuery = recipientsQuery,
+            SendersQuery = sendersQuery,
             RecipientCount = recipientCount,
+            SenderCount = senderCount,
         };
     }
 
@@ -109,7 +116,10 @@ public class DistributionListController : ControllerBase
             }
         }
 
-        var distributionList = new EmailRelay.Entities.DistributionList(request.Alias, request.RecipientsQuery.GetRawText())
+        var distributionList = new EmailRelay.Entities.DistributionList(
+            request.Alias,
+            request.RecipientsQuery.GetRawText(),
+            request.SendersQuery.GetRawText())
         {
             Flags = request.Newsletter ? DistributionListFlags.Newsletter : DistributionListFlags.None,
         };
