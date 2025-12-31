@@ -5,7 +5,7 @@
 namespace Mailist.Commands;
 
 [Command("mailist", Description = "Mailist server management console")]
-[Subcommand(typeof(DatabaseCommand), typeof(DistributionListCommand))]
+[Subcommand(typeof(DatabaseCommand))]
 public class MailistCommand
 {
     private int OnExecute(CommandLineApplication app)

@@ -14,15 +14,6 @@ It started as a standalone CMS and soon became an extension platform for ChurchT
 Mailist makes it possible to send emails to ChurchTools groups via email.
 For example, anyone can send an email to _youth@example.org_ and Mailist will forward it to all members of your ChurchTools group _Youth_ with role _Leader_.
 
-There is no Web UI available yet to manage distribution lists so you must stick to the CLI inside the Docker container:
-
-```
-./Mailist dist create youth
-./Mailist dist add-recipient youth -g 137
-```
-
-This command creates a distribution list _youth@example.org_ which forwards emails to every member of group #137.
-
 ## Installation
 
 The only officially supported distribution are Docker containers. An official image is available at [daniellerch/mailist](https://hub.docker.com/r/daniellerch/mailist).
@@ -82,12 +73,14 @@ The following instructions are written for Windows but generally also apply to L
 ### Tech Stack
 
 Backend
+
 - ASP.NET Core
 - Entity Framework Core
 - MySQL / MariaDB
 - Docker
 
 Frontend
+
 - Vue 3
 - TypeScript
 - PrimeVue
@@ -96,12 +89,14 @@ Frontend
 ### Development Setup
 
 Backend
+
 - Visual Studio 2026
 - .NET SDK 10.0
 - EF Core CLI Tools _(e.g. `dotnet tool install -g dotnet-ef`)_
 - MySQL or MariaDB _(e.g. from [PSModules](https://github.com/daniel-lerch/psmodules))_
 
 Frontend
+
 - Visual Studio Code
 - Vue Language Features (Volar) Extension
 - NodeJS 24 LTS
