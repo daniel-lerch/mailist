@@ -1,7 +1,13 @@
 <template>
   <div class="flex flex-col gap-2">
-    <div v-if="filters.length === 0" class="py-2 italic mx-auto">
-      Füge Filterkriterien hinzu um Empfänger auszuwählen.
+    <div v-if="filters.length === 0" class="py-2 mx-auto">
+      <Message v-if="props.modelValue.isAdvancedFilter()" severity="warn" variant="simple"
+        icon="pi pi-exclamation-triangle">
+        Wenn du hier Filterkriterien hinzufügst, wird der erweiterte Filter überschrieben.
+      </Message>
+      <span v-else class="italic">
+        Füge Filterkriterien hinzu um Empfänger auszuwählen.
+      </span>
     </div>
     <div v-for="(filter, index) in filters" :key="index">
       <div v-if="filter.kind === 'group'">
@@ -51,29 +57,27 @@
 </template>
 
 <script setup lang="ts">
-import { getChurchQueryFilter, getMailistFilters, type GroupFilter, type SinglePersonFilter, type StatusFilter } from "@/services/churchquery";
+import { MailistFilter, type GroupFilter, type SinglePersonFilter, type StatusFilter } from "@/services/churchquery";
 import type { Group, GroupRole, Person, Status } from "@/utils/ct-types";
 import { churchtoolsClient } from "@churchtools/churchtools-client";
 import Button from "primevue/button";
 import ButtonGroup from "primevue/buttongroup";
 import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
+import Message from "primevue/message";
 import Select from "primevue/select";
 import { onMounted, ref, watch } from "vue";
 import RoleCheckboxGroup from "./RoleCheckboxGroup.vue";
 
-const props = defineProps({
-  modelValue: {
-    required: true,
-  }
-})
+const props = defineProps<{ modelValue: MailistFilter }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: unknown): void
+  (e: 'update:modelValue', value: MailistFilter): void
 }>()
 
-const parsedFilters = getMailistFilters(props.modelValue)
-const filters = ref<(SinglePersonFilter | GroupFilter | StatusFilter)[]>(parsedFilters || [])
+const filters = ref<(SinglePersonFilter | GroupFilter | StatusFilter)[]>(
+  props.modelValue.parsedFilters?.slice() || []
+)
 
 const groups = ref<{ id: number, name: string, roles?: GroupRole[] }[]>([])
 const persons = ref<{ id: number, name: string }[]>([])
@@ -96,7 +100,7 @@ onMounted(() => {
 })
 
 watch(filters, (newValue) => {
-  const filter = getChurchQueryFilter(newValue)
+  const filter = MailistFilter.create(newValue)
   emit('update:modelValue', filter)
 }, { deep: true })
 

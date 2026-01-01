@@ -15,25 +15,22 @@
 import Message from "primevue/message";
 import Textarea from "primevue/textarea";
 import { ref, watch } from "vue";
+import { MailistFilter } from "@/services/churchquery";
 
-const props = defineProps({
-  modelValue: {
-    required: true,
-  }
-})
+const props = defineProps<{ modelValue: MailistFilter }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: unknown): void
+  (e: 'update:modelValue', value: MailistFilter): void
 }>()
 
-const text = ref(JSON.stringify(props.modelValue))
+const text = ref(JSON.stringify(props.modelValue.query))
 const invalid = ref(false)
 
 watch(text, (newValue) => {
   try {
     const value = JSON.parse(newValue)
     invalid.value = false
-    emit('update:modelValue', value)
+    emit('update:modelValue', MailistFilter.parse(value))
   } catch {
     invalid.value = true
   }

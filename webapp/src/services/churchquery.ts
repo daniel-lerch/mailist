@@ -20,6 +20,32 @@ export type StatusFilter = {
 
 export type PersonFilter = SinglePersonFilter | GroupFilter | StatusFilter
 
+export class MailistFilter {
+  readonly query: unknown
+  readonly parsedFilters: ReadonlyArray<PersonFilter> | null
+
+  private constructor(query: unknown, parsedFilters: PersonFilter[] | null) {
+    this.query = query
+    this.parsedFilters = parsedFilters
+  }
+
+  static create(filters: PersonFilter[]) {
+    return new MailistFilter(getChurchQueryFilter(filters), filters)
+  }
+
+  static parse(query: unknown) {
+    return new MailistFilter(query, getMailistFilters(query))
+  }
+
+  isEmpty() {
+    return this.query === null
+  }
+
+  isAdvancedFilter() {
+    return this.query !== null && this.parsedFilters === null
+  }
+}
+
 export type SinglePersonFilterWithNames = SinglePersonFilter & {
   name: string | null
 }

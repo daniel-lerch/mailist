@@ -20,8 +20,8 @@
       <div class="mb-2">Empfänger</div>
       <div class="mb-4 rounded-lg bg-gray-100 dark:bg-gray-950">
         <SelectButton v-model="mode" :options="modes" optionLabel="label" :allowEmpty="false" />
-        <PersonFilterEditor v-if="mode.name === 'default'" v-model="recipientsQuery" class="p-2" />
-        <AdvancedFilterEditor v-else-if="mode.name === 'advanced'" v-model="recipientsQuery" class="p-2" />
+        <PersonFilterEditor v-if="mode.name === 'default'" v-model="mailistFilter" class="p-2" />
+        <AdvancedFilterEditor v-else-if="mode.name === 'advanced'" v-model="mailistFilter" class="p-2" />
       </div>
       <Message v-if="error" severity="error" variant="simple" class="mb-4">{{ error }}</Message>
       <div class="flex flex-wrap gap-4">
@@ -43,6 +43,7 @@ import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import SelectButton from 'primevue/selectbutton';
 import PersonFilterEditor from '@/components/PersonFilterEditor.vue';
+import { MailistFilter } from '@/services/churchquery';
 import { createDistributionList, getDistributionList, modifyDistributionList } from '@/services/distribution-list';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -65,11 +66,12 @@ if (extension.accessToken === "") {
 const initialValue = props.id ? await getDistributionList(parseInt(props.id)) : undefined
 
 const modes = [{ name: "default", label: "Normaler Filter" }, { name: "advanced", label: "Erweiterter Filter (JSON)" }]
-const mode = ref(modes[0]!)
+
+const mailistFilter = ref(MailistFilter.parse(initialValue?.recipientsQuery ?? null))
+const mode = ref(mailistFilter.value.isAdvancedFilter() ? modes[1]! : modes[0]!)
 
 const alias = ref(initialValue?.alias ?? "")
 const newsletter = ref(initialValue?.newsletter ?? false)
-const recipientsQuery = ref(initialValue?.recipientsQuery ?? null)
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -85,13 +87,13 @@ async function save() {
       await createDistributionList({
         alias: alias.value,
         newsletter: newsletter.value,
-        recipientsQuery: recipientsQuery.value,
+        recipientsQuery: mailistFilter.value.query,
       })
     } else {
       await modifyDistributionList(initialValue.id, {
         alias: alias.value,
         newsletter: newsletter.value,
-        recipientsQuery: recipientsQuery.value,
+        recipientsQuery: mailistFilter.value.query,
       })
     }
     router.push("/")
