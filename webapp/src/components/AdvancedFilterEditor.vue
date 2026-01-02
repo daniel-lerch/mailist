@@ -15,7 +15,7 @@
 import Message from "primevue/message";
 import Textarea from "primevue/textarea";
 import { ref, watch } from "vue";
-import { MailistFilter } from "@/services/churchquery";
+import { MailistFilter } from "@/services/filter";
 
 const props = defineProps<{ modelValue: MailistFilter }>()
 

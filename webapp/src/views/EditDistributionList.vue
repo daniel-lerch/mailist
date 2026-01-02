@@ -43,7 +43,7 @@ import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import SelectButton from 'primevue/selectbutton';
 import PersonFilterEditor from '@/components/PersonFilterEditor.vue';
-import { MailistFilter } from '@/services/churchquery';
+import { MailistFilter } from '@/services/filter';
 import { createDistributionList, getDistributionList, modifyDistributionList } from '@/services/distribution-list';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
