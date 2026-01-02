@@ -65,7 +65,7 @@ import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
 import Message from "primevue/message";
 import Select from "primevue/select";
-import { onMounted, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import RoleCheckboxGroup from "./RoleCheckboxGroup.vue";
 import { useChurchtoolsStore } from "@/stores/churchtools";
 
@@ -80,10 +80,7 @@ const filters = ref<(SinglePersonFilter | GroupFilter | StatusFilter)[]>(
 )
 
 const cache = useChurchtoolsStore()
-
-onMounted(() => {
-  cache.refreshIfInvalid()
-})
+await cache.refreshIfInvalid()
 
 watch(filters, (newValue) => {
   const filter = MailistFilter.create(newValue)

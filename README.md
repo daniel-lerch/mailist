@@ -37,14 +37,9 @@ Steps 4. and 5. can also be performed in the ChurchTools web interface: [Officia
 > [!WARNING]
 > For security reasons it is not recommended to let Mailist use your ChurchTools admin account.
 
-Grant the following permissions to Mailist's user:
+Grant the following permission to Mailist's user:
 
 - Administration > Berechtigungen anpassen `churchcore:administer persons`
-- Personen & Gruppen > "Personen & Gruppen" sehen `churchdb:view`
-- Personen & Gruppen > Sicherheitslevel Personendaten (Stufe 1-3) `churchdb:security level person(1,2,3)`
-- Personen & Gruppen > Alle Personen des jeweiligen Bereiches sichtbar machen (Alle) `churchdb:view alldata(-1)`
-- Personen & Gruppen > Einzelne Gruppen inkl. der enthaltenen Personen sehen (gilt auch für versteckte Gruppen) (Alle) `churchdb:view group(-1)`
-- Personen & Gruppen > Gruppenmitgliedschaften aller sichtbaren Personen bearbeiten `churchdb:edit group memberships`
 
 After creating and configuring a ChurchTools user for Mailist you can finally configure it via [environment variables](docs/configuration.md#churchtools) in `compose.yaml`.
 

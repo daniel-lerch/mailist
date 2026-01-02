@@ -16,9 +16,6 @@ export const useChurchtoolsStore = defineStore("churchtools", {
   actions: {
     async refreshIfInvalid() {
       if (Date.now() - this.timestamp > 5 * 60 * 1000) {
-        // Set timestamp early to avoid multiple simultaneous refreshes
-        this.timestamp = Date.now()
-
         const groupsTask = churchtoolsClient
           .getAllPages<Group>("/groups", { include: ["roles"] })
           .then(
@@ -49,6 +46,8 @@ export const useChurchtoolsStore = defineStore("churchtools", {
           .then((data) => (this.statuses = data.map((s) => ({ id: s.id, name: s.nameTranslated }))))
 
         await Promise.all([groupsTask, personsTask, statusesTask])
+
+        this.timestamp = Date.now()
       }
     },
   },
