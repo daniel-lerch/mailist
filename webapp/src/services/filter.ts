@@ -1,5 +1,3 @@
-import type { Person, Group, Status } from "@/utils/ct-types"
-import { churchtoolsClient } from "@churchtools/churchtools-client"
 import { z } from "zod"
 
 export type SinglePersonFilter = {
@@ -20,23 +18,31 @@ export type StatusFilter = {
 
 export type PersonFilter = SinglePersonFilter | GroupFilter | StatusFilter
 
-export type SinglePersonFilterWithNames = SinglePersonFilter & {
-  name: string | null
-}
+export class MailistFilter {
+  readonly query: unknown
+  readonly parsedFilters: ReadonlyArray<PersonFilter> | null
 
-export type GroupFilterWithNames = GroupFilter & {
-  name: string | null
-  roles: (string | null)[]
-}
+  private constructor(query: unknown, parsedFilters: PersonFilter[] | null) {
+    this.query = query
+    this.parsedFilters = parsedFilters
+  }
 
-export type StatusFilterWithNames = StatusFilter & {
-  name: string | null
-}
+  static create(filters: PersonFilter[]) {
+    return new MailistFilter(getChurchQueryFilter(filters), filters)
+  }
 
-export type PersonFilterWithNames =
-  | SinglePersonFilterWithNames
-  | GroupFilterWithNames
-  | StatusFilterWithNames
+  static parse(query: unknown) {
+    return new MailistFilter(query, getMailistFilters(query))
+  }
+
+  isEmpty() {
+    return this.query === null
+  }
+
+  isAdvancedFilter() {
+    return this.query !== null && this.parsedFilters === null
+  }
+}
 
 function varObj(name: string) {
   return z.object({ var: z.literal(name) })
@@ -200,86 +206,4 @@ export function getChurchQueryFilter(filters: PersonFilter[]) {
       ],
     }
   }
-}
-
-function getPersonName(person?: Person) {
-  if (person === undefined) {
-    return null
-  } else if (person.nickname) {
-    return `${person.firstName} (${person.nickname}) ${person.lastName}`
-  } else {
-    return `${person.firstName} ${person.lastName}`
-  }
-}
-
-export async function getMailistFiltersWithNames(
-  query: unknown
-): Promise<PersonFilterWithNames[] | null> {
-  const filters = getMailistFilters(query)
-  if (filters === null) {
-    return null
-  }
-
-  const groupIds = new Set<number>()
-  const personIds = new Set<number>()
-  const statusIds = new Set<number>()
-
-  for (const filter of filters) {
-    if (filter?.kind === "group") {
-      groupIds.add(filter.groupId)
-    } else if (filter?.kind === "person") {
-      personIds.add(filter.personId)
-    } else {
-      statusIds.add(filter.statusId)
-    }
-  }
-  const groups = new Map<number, Group>()
-  const persons = new Map<number, Person>()
-  const statuses = new Map<number, Status>()
-
-  if (groupIds.size > 0) {
-    const groupResponse = await churchtoolsClient.get<Group[]>("/groups", {
-      ids: Array.from(groupIds),
-    })
-    for (const group of groupResponse) {
-      groups.set(group.id, group)
-    }
-  }
-
-  if (personIds.size > 0) {
-    const personResponse = await churchtoolsClient.get<Person[]>("/persons", {
-      ids: Array.from(personIds),
-    })
-    for (const person of personResponse) {
-      persons.set(person.id, person)
-    }
-  }
-
-  if (statusIds.size > 0) {
-    const statusResponse = await churchtoolsClient.get<Status[]>("/statuses")
-    for (const status of statusResponse) {
-      statuses.set(status.id, status)
-    }
-  }
-
-  const filtersWithNames = []
-
-  for (const filter of filters) {
-    if (filter?.kind === "group") {
-      const group = groups.get(filter.groupId)
-      filtersWithNames.push({
-        ...filter,
-        name: group?.name ?? null,
-        roles: filter.roleIds.map(
-          (roleId) => group?.roles?.find((role) => role.groupTypeRoleId === roleId)?.name ?? null
-        ),
-      })
-    } else if (filter?.kind === "person") {
-      filtersWithNames.push({ ...filter, name: getPersonName(persons.get(filter.personId)) })
-    } else {
-      filtersWithNames.push({ ...filter, name: statuses.get(filter.statusId)?.name ?? null })
-    }
-  }
-
-  return filtersWithNames
 }
