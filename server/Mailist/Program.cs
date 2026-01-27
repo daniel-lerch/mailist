@@ -1,29 +1,40 @@
-using Mailist.Commands;
+using ConsoleAppFramework;
 using Mailist.ChurchTools;
 using Mailist.EmailDelivery;
 using Mailist.EmailRelay;
 using Mailist.Extensions;
 using Mailist.Utilities;
-using McMaster.Extensions.CommandLineUtils;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace Mailist;
 
 public class Program
 {
-    public static async Task<int> Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        // TODO: Make the base command execute the web host (WebApplicationFactory passes ~3 args)
-        //if (args.Length == 0)
-        //{
-        var builder = WebApplication.CreateBuilder(args);
+        // Create ConsoleAppFramework application and configure services from appsettings
+        var app = ConsoleApp.Create()
+            .ConfigureDefaultConfiguration()
+            .ConfigureLogging(builder =>
+            {
+                builder.AddConsole();
+            })
+            .ConfigureServices((context, configuration, services) =>
+            {
+                services.AddMailistOptions(configuration);
+                services.AddMailistMySqlDatabase();
+            });
+
+        // Register default command to start backend
+        app.Add("", async (ConsoleAppContext context) =>
+        {
+            var builder = WebApplication.CreateBuilder(context.Arguments);
 
             ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
 
@@ -36,50 +47,13 @@ public class Program
             app.MigrateDatabase();
 
             await app.RunAsync();
-            return Environment.ExitCode;
-        //}
-        //else
-        //{
-        //    return await CreateAndRunCommandLine(args);
-        //}
-    }
+        });
 
-    private static async Task<int> CreateAndRunCommandLine(string[] args)
-    {
-        IServiceScope? scope = null;
-        try
-        {
-            return await CreateCliHostBuilder().RunCommandLineApplicationAsync<MailistCommand>(args, app =>
-            {
-                var scope = app.CreateScope();
-                app.Conventions.UseConstructorInjection(scope.ServiceProvider);
-            });
-        }
-        catch (UnrecognizedCommandParsingException)
-        {
-            return 1;
-        }
-        finally
-        {
-            scope?.Dispose();
-        }
-    }
+        // Register command class DatabaseCommand (methods become commands)
+        app.Add<DatabaseCommand>("database");
 
-    public static IHostBuilder CreateCliHostBuilder() =>
-        Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((context, config) =>
-            {
-                if (context.HostingEnvironment.IsDevelopment())
-                {
-                    config.AddUserSecrets<Program>();
-                }
-            })
-            .ConfigureServices((context, services) =>
-            {
-                services.AddMailistOptions(context.Configuration);
-                services.AddSingleton(PhysicalConsole.Singleton);
-                services.AddMailistMySqlDatabase();
-            });
+        await app.RunAsync(args);
+    }
 
     private static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
@@ -96,11 +70,6 @@ public class Program
         services.AddOpenApiDocument();
 
         services.AddHealthChecks();
-
-        if (!environment.IsDevelopment())
-        {
-            services.AddDataProtection().PersistKeysToFileSystem(new(System.IO.Path.Combine(environment.ContentRootPath, "secrets")));
-        }
 
         services.AddOAuthAuthentication(configuration, environment);
 
