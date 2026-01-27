@@ -19,7 +19,7 @@ public class Program
     public static async Task Main(string[] args)
     {
         // Create ConsoleAppFramework application and configure services from appsettings
-        var app = ConsoleApp.Create()
+        var cli = ConsoleApp.Create()
             .ConfigureDefaultConfiguration()
             .ConfigureLogging(builder =>
             {
@@ -32,7 +32,7 @@ public class Program
             });
 
         // Register default command to start backend
-        app.Add("", async (ConsoleAppContext context) =>
+        cli.Add("", async (ConsoleAppContext context) =>
         {
             var builder = WebApplication.CreateBuilder(context.Arguments);
 
@@ -50,9 +50,9 @@ public class Program
         });
 
         // Register command class DatabaseCommand (methods become commands)
-        app.Add<DatabaseCommand>("database");
+        cli.Add<DatabaseCommand>("database");
 
-        await app.RunAsync(args);
+        await cli.RunAsync(args);
     }
 
     private static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)

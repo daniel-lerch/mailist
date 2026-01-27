@@ -1,14 +1,14 @@
-using Mailist.Utilities;
 using Mailist.Models.Json;
+using Mailist.Utilities;
 using Microsoft.Extensions.DependencyInjection;
-using System.Text.Json;
+using System;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
-using System;
 
 namespace Mailist.Tests.Integration;
 
@@ -49,6 +49,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         Assert.NotNull(lists);
         var found = lists.FirstOrDefault(dl => dl.Alias == alias);
         Assert.NotNull(found);
+        Assert.Equal(id, found.Id);
         Assert.Equal(JsonValueKind.Null, found!.RecipientsQuery.ValueKind);
         Assert.Equal(0, found.RecipientCount);
     }
@@ -68,6 +69,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         var list = await client.GetFromJsonAsync<DistributionList>($"/api/distribution-lists/{id}", TestContext.Current.CancellationToken);
         Assert.NotNull(list);
         Assert.Equal(alias, list.Alias);
+        Assert.Equal(id, list.Id);
         Assert.Equal(JsonValueKind.Null, list!.RecipientsQuery.ValueKind);
         Assert.Equal(0, list.RecipientCount);
     }
