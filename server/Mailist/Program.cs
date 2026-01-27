@@ -106,6 +106,8 @@ public class Program
 
         services.AddHostedService<ChurchToolsPermissionsHostedService>();
 
+        services.AddSingleton<TokenService>();
+
         if (configuration.GetValue<bool>("EmailDelivery:Enable"))
         {
             services.AddSingleton<JobQueue<EmailDeliveryJobController>>();
