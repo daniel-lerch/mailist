@@ -1,76 +1,123 @@
-using Mailist.Commands;
+using ConsoleAppFramework;
+using Mailist.ChurchTools;
+using Mailist.EmailDelivery;
+using Mailist.EmailRelay;
 using Mailist.Extensions;
-using McMaster.Extensions.CommandLineUtils;
+using Mailist.Utilities;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace Mailist;
 
 public class Program
 {
-    public static async Task<int> Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        if (args.Length == 0)
-        {
-            await CreateWebHostBuilder(args).Build()
-                // Automatic database migration is done here right after building the host and not in Startup.Configure
-                // to make sure no other other hosted services can start while migrations are not yet completed.
-                .MigrateDatabase()
-                .RunAsync();
-            return Environment.ExitCode;
-        }
-        else
-        {
-            return await CreateAndRunCommandLine(args);
-        }
-    }
-
-    private static async Task<int> CreateAndRunCommandLine(string[] args)
-    {
-        IServiceScope? scope = null;
-        try
-        {
-            return await CreateCliHostBuilder().RunCommandLineApplicationAsync<MailistCommand>(args, app =>
+        // Create ConsoleAppFramework application and configure services from appsettings
+        var cli = ConsoleApp.Create()
+            .ConfigureDefaultConfiguration()
+            .ConfigureLogging(builder =>
             {
-                // This method disposes the host after shutdown. Therefore, it might be dangerous to dispose the scope after that.
-                var scope = app.CreateScope();
-                app.Conventions.UseConstructorInjection(scope.ServiceProvider);
-            });
-        }
-        catch (UnrecognizedCommandParsingException) // Host integration of v3.0.0 does not support disabling this exception
-        {
-            return 1;
-        }
-        finally
-        {
-            scope?.Dispose();
-        }
-    }
-
-    private static IHostBuilder CreateWebHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseStartup<Startup>();
-            });
-
-    private static IHostBuilder CreateCliHostBuilder() =>
-        Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((context, config) =>
-            {
-                if (context.HostingEnvironment.IsDevelopment())
-                {
-                    config.AddUserSecrets<Program>();
-                }
+                builder.AddConsole();
             })
-            .ConfigureServices((context, services) =>
+            .ConfigureServices((context, configuration, services) =>
             {
-                services.AddMailistOptions(context.Configuration);
-				services.AddSingleton(PhysicalConsole.Singleton);
+                services.AddMailistOptions(configuration);
                 services.AddMailistMySqlDatabase();
             });
+
+        // Register default command to start backend
+        cli.Add("", async (ConsoleAppContext context) =>
+        {
+            var builder = WebApplication.CreateBuilder(context.Arguments);
+
+            ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
+
+            var app = builder.Build();
+
+            Configure(app, app.Environment);
+
+            // Automatic database migration is done here right after building the host and not in Configure
+            // to make sure no other hosted services can start while migrations are not yet completed.
+            app.MigrateDatabase();
+
+            await app.RunAsync();
+        });
+
+        // Register command class DatabaseCommand (methods become commands)
+        cli.Add<DatabaseCommand>("database");
+
+        await cli.RunAsync(args);
+    }
+
+    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
+    {
+        services.AddMailistOptions(configuration);
+
+        services.AddChurchToolsApi();
+
+        services.AddMailistMySqlDatabase();
+
+        services.AddMemoryCache();
+
+        services.AddControllers();
+
+        services.AddOpenApiDocument();
+
+        services.AddHealthChecks();
+
+        services.AddOAuthAuthentication(configuration, environment);
+
+        services.AddHostedService<ChurchToolsPermissionsHostedService>();
+
+        services.AddSingleton<TokenService>();
+
+        if (configuration.GetValue<bool>("EmailDelivery:Enable"))
+        {
+            services.AddSingleton<JobQueue<EmailDeliveryJobController>>();
+            services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<JobQueue<EmailDeliveryJobController>>());
+            services.AddScoped<EmailDeliveryService>();
+
+            if (configuration.GetValue<bool>("EmailRelay:Enable"))
+            {
+                services.AddSingleton<JobQueue<EmailRelayJobController>>();
+                services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<JobQueue<EmailRelayJobController>>());
+                services.AddScoped<ImapReceiverService>();
+                services.AddScoped<DistributionListService>();
+                services.AddScoped<MimeMessageCreationService>();
+                services.AddHostedService<EmailRelayHostedService>();
+            }
+        }
+    }
+
+    private static void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
+
+        app.UseHosting();
+
+        app.UseRouting();
+
+        app.UseMailistCors();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+            endpoints.MapHealthChecks("/healthz").RequireHost("localhost:*");
+        });
+
+        app.UseOpenApi();
+        app.UseSwaggerUi();
+    }
 }
