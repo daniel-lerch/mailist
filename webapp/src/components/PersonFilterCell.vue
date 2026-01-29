@@ -1,9 +1,9 @@
 <template>
-  <div v-if="parsedFilters === null">
+  <div v-if="props.filter !== null && parsedFilters === null">
     <i class="pi pi-code"></i>
     Erweiterter Filter
   </div>
-  <div v-else>
+  <div v-else-if="parsedFilters !== null">
     <div v-for="(f, index) in parsedFilters" :key="index" class="mb-2">
       <div v-if="f.kind === 'group'">
         <div v-if="f.name">
@@ -48,13 +48,12 @@
 
 <script setup lang="ts">
 import Tag from 'primevue/tag';
-import { getMailistFiltersWithNames } from '@/services/churchquery';
+import { getMailistFiltersWithNames } from '@/services/filter-with-names';
 
 const props = defineProps<{
   filter: unknown
 }>()
 
-// TODO: Move this calculation up a level to fetch names in bulk
 const parsedFilters = await getMailistFiltersWithNames(props.filter)
 
 </script>

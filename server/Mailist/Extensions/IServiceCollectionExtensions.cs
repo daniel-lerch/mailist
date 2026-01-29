@@ -57,7 +57,6 @@ public static class IServiceCollectionExtensions
             var options = services.GetRequiredService<IOptions<DatabaseOptions>>();
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             optionsBuilder.UseLoggerFactory(loggerFactory);
-            optionsBuilder.EnableSensitiveDataLogging();
             optionsBuilder.UseMySql(
                 options.Value.ConnectionString,
                 ServerVersion.AutoDetect(options.Value.ConnectionString),
@@ -78,7 +77,7 @@ public static class IServiceCollectionExtensions
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme);
 
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<ILogger<Startup>, IOptions<JwtOptions>>((options, logger, jwtConfig) =>
+            .Configure<ILogger<Program>, IOptions<JwtOptions>>((options, logger, jwtConfig) =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
                 {

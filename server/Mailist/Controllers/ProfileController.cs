@@ -1,14 +1,9 @@
 ﻿using ChurchTools;
-using Mailist.Configuration;
+using Mailist.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace Mailist.Controllers;
@@ -16,11 +11,11 @@ namespace Mailist.Controllers;
 [ApiController]
 public class ProfileController : ControllerBase
 {
-    private readonly IOptions<JwtOptions> jwtOptions;
+    private readonly TokenService tokenService;
 
-    public ProfileController(IOptions<JwtOptions> jwtOptions)
+    public ProfileController(TokenService tokenService)
     {
-        this.jwtOptions = jwtOptions;
+        this.tokenService = tokenService;
     }
 
     [HttpPost("~/api/token")]
@@ -42,36 +37,7 @@ public class ProfileController : ControllerBase
 
         bool isAdmin = permissions.Mailist.EditCustomData.Contains(configCategory.Id);
 
-        var key = new SymmetricSecurityKey(Convert.FromHexString(jwtOptions.Value.SigningKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var now = DateTime.UtcNow;
-        var expires = now.AddHours(1);
-
-        var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            // iat as Unix time (seconds)
-            new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
-        };
-
-        if (isAdmin)
-        {
-            // Add a "role" claim so ASP.NET Core authorization recognizes it as a role.
-            claims.Add(new Claim(ClaimTypes.Role, "admin"));
-        }
-
-        var token = new JwtSecurityToken(
-            issuer: jwtOptions.Value.Issuer,
-            audience: jwtOptions.Value.Audience,
-            claims: claims,
-            notBefore: now,
-            expires: expires,
-            signingCredentials: creds
-        );
-
-        string tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        string tokenString = tokenService.CreateToken(user.Id.ToString(), isAdmin);
 
         return new TokenResponse { AccessToken = tokenString };
     }

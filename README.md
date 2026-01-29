@@ -14,15 +14,6 @@ It started as a standalone CMS and soon became an extension platform for ChurchT
 Mailist makes it possible to send emails to ChurchTools groups via email.
 For example, anyone can send an email to _youth@example.org_ and Mailist will forward it to all members of your ChurchTools group _Youth_ with role _Leader_.
 
-There is no Web UI available yet to manage distribution lists so you must stick to the CLI inside the Docker container:
-
-```
-./Mailist dist create youth
-./Mailist dist add-recipient youth -g 137
-```
-
-This command creates a distribution list _youth@example.org_ which forwards emails to every member of group #137.
-
 ## Installation
 
 The only officially supported distribution are Docker containers. An official image is available at [daniellerch/mailist](https://hub.docker.com/r/daniellerch/mailist).
@@ -46,14 +37,9 @@ Steps 4. and 5. can also be performed in the ChurchTools web interface: [Officia
 > [!WARNING]
 > For security reasons it is not recommended to let Mailist use your ChurchTools admin account.
 
-Grant the following permissions to Mailist's user:
+Grant the following permission to Mailist's user:
 
 - Administration > Berechtigungen anpassen `churchcore:administer persons`
-- Personen & Gruppen > "Personen & Gruppen" sehen `churchdb:view`
-- Personen & Gruppen > Sicherheitslevel Personendaten (Stufe 1-3) `churchdb:security level person(1,2,3)`
-- Personen & Gruppen > Alle Personen des jeweiligen Bereiches sichtbar machen (Alle) `churchdb:view alldata(-1)`
-- Personen & Gruppen > Einzelne Gruppen inkl. der enthaltenen Personen sehen (gilt auch für versteckte Gruppen) (Alle) `churchdb:view group(-1)`
-- Personen & Gruppen > Gruppenmitgliedschaften aller sichtbaren Personen bearbeiten `churchdb:edit group memberships`
 
 After creating and configuring a ChurchTools user for Mailist you can finally configure it via [environment variables](docs/configuration.md#churchtools) in `compose.yaml`.
 
@@ -82,12 +68,14 @@ The following instructions are written for Windows but generally also apply to L
 ### Tech Stack
 
 Backend
+
 - ASP.NET Core
 - Entity Framework Core
 - MySQL / MariaDB
 - Docker
 
 Frontend
+
 - Vue 3
 - TypeScript
 - PrimeVue
@@ -96,12 +84,14 @@ Frontend
 ### Development Setup
 
 Backend
+
 - Visual Studio 2026
 - .NET SDK 10.0
 - EF Core CLI Tools _(e.g. `dotnet tool install -g dotnet-ef`)_
 - MySQL or MariaDB _(e.g. from [PSModules](https://github.com/daniel-lerch/psmodules))_
 
 Frontend
+
 - Visual Studio Code
 - Vue Language Features (Volar) Extension
 - NodeJS 24 LTS
