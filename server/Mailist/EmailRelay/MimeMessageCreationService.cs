@@ -2,6 +2,7 @@
 using ChurchTools.Model;
 using Mailist.EmailDelivery;
 using Mailist.EmailRelay.Entities;
+using Mailist.Utilities;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using System;
@@ -64,7 +65,7 @@ public class MimeMessageCreationService
             // Reading from a MemoryStream is a synchronous operation that won't be cancelled anyhow
             body = MimeEntity.Load(memoryStream, CancellationToken.None);
 
-        MailboxAddress? from = FirstMailboxAddressOrDefault(inboxEmail.From);
+        MailboxAddress? from = InternetAddressHelper.FirstMailboxAddressOrDefault(inboxEmail.From);
         string? fromName = await FromName(from, cancellationToken);
 
         MimeMessage message = new();
@@ -92,6 +93,13 @@ public class MimeMessageCreationService
             $"Die E-Mail-Adresse {inboxEmail.Receiver} existiert nicht.");
     }
 
+    public MimeMessage? SenderNotPermitted(InboxEmail inboxEmail)
+    {
+        return ErrorMessage(inboxEmail, $"Hallo,\r\n" +
+            $"deine E-Mail mit dem Betreff {inboxEmail.Subject} an {inboxEmail.Receiver} konnte nicht zugestellt werden.\r\n" +
+            $"Du bist nicht berechtigt, an die Verteilerliste {inboxEmail.Receiver} zu schreiben.");
+    }
+
     public MimeMessage? TooManyHeaders(InboxEmail inboxEmail)
     {
         return ErrorMessage(inboxEmail, $"Hallo,\r\n" +
@@ -110,8 +118,8 @@ public class MimeMessageCreationService
 
     private MimeMessage? ErrorMessage(InboxEmail inboxEmail, string message)
     {
-        MailboxAddress? recipient = FirstMailboxAddressOrDefault(inboxEmail.ReplyTo)
-            ?? FirstMailboxAddressOrDefault(inboxEmail.From);
+        MailboxAddress? recipient = InternetAddressHelper.FirstMailboxAddressOrDefault(inboxEmail.ReplyTo)
+            ?? InternetAddressHelper.FirstMailboxAddressOrDefault(inboxEmail.From);
 
         if (recipient == null) return null;
 
@@ -141,20 +149,5 @@ public class MimeMessageCreationService
 
         // If no name can be determined return address like: alice@example.org <noreply@example.org>
         return from.Address;
-    }
-
-    private static MailboxAddress? FirstMailboxAddressOrDefault(string? addressList)
-    {
-        if (addressList == null || !InternetAddressList.TryParse(addressList, out InternetAddressList? internetAddressList))
-            return null;
-
-        foreach (InternetAddress address in internetAddressList)
-        {
-            // We might find no MailboxAddress in a From header if all addresses are GroupAddresses
-            if (address is MailboxAddress mailboxAddress)
-                return mailboxAddress;
-        }
-
-        return null;
     }
 }

@@ -1,12 +1,10 @@
-﻿using ChurchTools;
-using ChurchTools.Model;
-using Mailist.EmailRelay;
+﻿using Mailist.EmailRelay;
 using Mailist.Models.Json;
+using Mailist.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,14 +17,12 @@ namespace Mailist.Controllers;
 public class DistributionListController : ControllerBase
 {
     private readonly DatabaseContext database;
-    private readonly IChurchToolsApi churchTools;
-    private readonly IMemoryCache memoryCache;
+    private readonly ChurchQueryCacheService churchQueryCache;
 
-    public DistributionListController(DatabaseContext database, IChurchToolsApi churchTools, IMemoryCache memoryCache)
+    public DistributionListController(DatabaseContext database, ChurchQueryCacheService churchQueryCache)
     {
         this.database = database;
-        this.churchTools = churchTools;
-        this.memoryCache = memoryCache;
+        this.churchQueryCache = churchQueryCache;
     }
 
     [Authorize]
@@ -63,22 +59,8 @@ public class DistributionListController : ControllerBase
     {
         JsonElement recipientsQuery = JsonElement.Parse(dl.RecipientsQuery);
         JsonElement sendersQuery = JsonElement.Parse(dl.SendersQuery);
-        int recipientCount = 0;
-        int senderCount = 0;
-
-        // TODO: Move caching into an own service and probably use separate cache entries for recipient and sender counts
-        if (recipientsQuery.ValueKind != JsonValueKind.Null || sendersQuery.ValueKind != JsonValueKind.Null)
-        {
-            (recipientCount, senderCount) = await memoryCache.GetOrCreateAsync(dl.Id, async cacheEntry =>
-            {
-                cacheEntry.SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
-                ChurchQueryRequest<IdNameEmail> recipientsQueryRequest = new(recipientsQuery);
-                ChurchQueryRequest<IdNameEmail> sendersQueryRequest = new(sendersQuery);
-                var recipients = churchTools.ChurchQuery(recipientsQueryRequest);
-                var senders = churchTools.ChurchQuery(sendersQueryRequest);
-                return ((await recipients).Count, (await senders).Count);
-            });
-        }
+        var recipientCount = churchQueryCache.GetCountAsync(recipientsQuery);
+        var senderCount = churchQueryCache.GetCountAsync(sendersQuery);
 
         return new DistributionList
         {
@@ -87,8 +69,8 @@ public class DistributionListController : ControllerBase
             Newsletter = dl.Flags.HasFlag(DistributionListFlags.Newsletter),
             RecipientsQuery = recipientsQuery,
             SendersQuery = sendersQuery,
-            RecipientCount = recipientCount,
-            SenderCount = senderCount,
+            RecipientCount = await recipientCount,
+            SenderCount = await senderCount,
         };
     }
 
@@ -100,20 +82,19 @@ public class DistributionListController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Alias))
             return BadRequest("Alias must not be empty");
 
-        int recipientCount = 0;
+        int recipientCount;
+        int senderCount;
 
-        if (request.RecipientsQuery.ValueKind != JsonValueKind.Null)
+        try // Evaluate query to make sure it's valid
         {
-            try // Evaluate query to make sure it's valid
-            {
-                ChurchQueryRequest<IdNameEmail> query = new(request.RecipientsQuery);
-                var recipients = await churchTools.ChurchQuery(query);
-                recipientCount = recipients.Count;
-            }
-            catch (Exception ex)
-            {
-                return BadRequest($"Invalid RecipientsQuery: {ex.Message}");
-            }
+            var recipients = churchQueryCache.GetCountAsync(request.RecipientsQuery);
+            var senders = churchQueryCache.GetCountAsync(request.SendersQuery);
+            recipientCount = await recipients;
+            senderCount = await senders;
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Invalid ChurchQuery syntax: {ex.Message}");
         }
 
         var distributionList = new EmailRelay.Entities.DistributionList(
@@ -127,8 +108,6 @@ public class DistributionListController : ControllerBase
         database.DistributionLists.Add(distributionList);
         await database.SaveChangesAsync();
 
-        memoryCache.Set(distributionList.Id, recipientCount, TimeSpan.FromMinutes(5));
-
         var response = new DistributionList
         {
             Id = distributionList.Id,
@@ -136,6 +115,8 @@ public class DistributionListController : ControllerBase
             Newsletter = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter),
             RecipientsQuery = JsonElement.Parse(distributionList.RecipientsQuery),
             RecipientCount = recipientCount,
+            SendersQuery = JsonElement.Parse(distributionList.SendersQuery),
+            SenderCount = senderCount,
         };
 
         return Created($"/api/distribution-lists/{distributionList.Id}", response);
@@ -159,18 +140,22 @@ public class DistributionListController : ControllerBase
         distributionList.Flags = request.Newsletter ? DistributionListFlags.Newsletter : DistributionListFlags.None;
         distributionList.RecipientsQuery = request.RecipientsQuery.GetRawText();
 
-        int recipientCount = 0;
+        int recipientCount;
+        int senderCount;
 
-        if (request.RecipientsQuery.ValueKind != JsonValueKind.Null)
+        try
         {
-            ChurchQueryRequest<IdNameEmail> query = new(request.RecipientsQuery);
-            var recipients = await churchTools.ChurchQuery(query);
-            recipientCount = recipients.Count;
+            var recipients = churchQueryCache.GetCountAsync(request.RecipientsQuery);
+            var senders = churchQueryCache.GetCountAsync(request.SendersQuery);
+            recipientCount = await recipients;
+            senderCount = await senders;
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Invalid ChurchQuery syntax: {ex.Message}");
         }
 
         await database.SaveChangesAsync();
-
-        memoryCache.Set(distributionList.Id, recipientCount, TimeSpan.FromMinutes(5));
 
         var response = new DistributionList
         {
@@ -179,6 +164,8 @@ public class DistributionListController : ControllerBase
             Newsletter = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter),
             RecipientsQuery = JsonElement.Parse(distributionList.RecipientsQuery),
             RecipientCount = recipientCount,
+            SendersQuery = JsonElement.Parse(distributionList.SendersQuery),
+            SenderCount = senderCount,
         };
 
         return Ok(response);

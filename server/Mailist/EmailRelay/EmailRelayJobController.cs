@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using MimeKit;
 using System;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,7 +16,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
     private readonly DatabaseContext database;
     private readonly ILogger<EmailRelayJobController> logger;
     private readonly DistributionListService distributionListService;
-    private readonly MimeMessageCreationService emailRelay;
+    private readonly MimeMessageCreationService mimeMessageService;
     private readonly EmailDeliveryService emailDelivery;
 
     public EmailRelayJobController(DatabaseContext database, ILogger<EmailRelayJobController> logger, DistributionListService distributionListService, MimeMessageCreationService emailRelay, EmailDeliveryService emailDelivery)
@@ -25,7 +24,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         this.database = database;
         this.logger = logger;
         this.distributionListService = distributionListService;
-        this.emailRelay = emailRelay;
+        this.mimeMessageService = emailRelay;
         this.emailDelivery = emailDelivery;
     }
 
@@ -51,7 +50,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
 
         if (email.Receiver == null)
         {
-            using MimeMessage? errorMessage = emailRelay.InvalidServerConfiguration(email);
+            using MimeMessage? errorMessage = mimeMessageService.InvalidServerConfiguration(email);
             await RejectEmail(email, errorMessage, cancellationToken);
 
             logger.LogWarning("Could not determine receiver for message #{Id} from {From} to {To}. This message will not be forwarded. " +
@@ -66,22 +65,26 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
 
         if (distributionList == null)
         {
-            using MimeMessage? errorMessage = emailRelay.InvalidAlias(email);
+            using MimeMessage? errorMessage = mimeMessageService.InvalidAlias(email);
             await RejectEmail(email, errorMessage, cancellationToken);
 
             logger.LogInformation("No group found with alias {Receiver} for email #{Id} from {From}", email.Receiver, email.Id, email.From);
             return;
         }
 
-        // TODO: Check allowed senders
-        if (await distributionListService.IsSenderPermitted(distributionList))
+        // Check allowed senders
+        string? sender = GetActualSender(email);
+        if (!await distributionListService.IsSenderPermitted(sender, distributionList, cancellationToken))
         {
+            await RejectEmail(email, mimeMessageService.SenderNotPermitted(email), cancellationToken);
 
+            logger.LogInformation("Sender {From}, {Sender} is not permitted to send to distribution list {Receiver} for email #{Id}", email.From, email.Sender, email.Receiver, email.Id);
+            return;
         }
 
         if (email.Header == null)
         {
-            using MimeMessage? errorMessage = emailRelay.TooManyHeaders(email);
+            using MimeMessage? errorMessage = mimeMessageService.TooManyHeaders(email);
             await RejectEmail(email, errorMessage, cancellationToken);
 
             logger.LogInformation("Email #{Id} from {From} to {Receiver} exceeded the header size limit", email.Id, email.From, email.Receiver);
@@ -90,7 +93,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
 
         if (email.Body == null)
         {
-            using MimeMessage? errorMessage = emailRelay.TooBigMessage(email);
+            using MimeMessage? errorMessage = mimeMessageService.TooBigMessage(email);
             await RejectEmail(email, errorMessage, cancellationToken);
 
             logger.LogInformation("Email #{Id} from {From} to {Receiver} exceeded the body size limit", email.Id, email.From, email.Receiver);
@@ -101,8 +104,8 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         foreach (MailboxAddress address in recipients)
         {
             using MimeMessage preparedMessage = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter)
-                ? await emailRelay.PrepareForForwardTo(email, address, cancellationToken)
-                : emailRelay.PrepareForResentTo(email, address);
+                ? await mimeMessageService.PrepareForForwardTo(email, address, cancellationToken)
+                : mimeMessageService.PrepareForResentTo(email, address);
             await emailDelivery.Enqueue(address.Address, preparedMessage, email.Id, cancellationToken);
         }
         email.DistributionListId = distributionList.Id;
@@ -133,7 +136,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         }
         else
         {
-            return MailboxAddressHelper.FirstMailboxAddressOrDefault(email.From)?.Address;
+            return InternetAddressHelper.FirstMailboxAddressOrDefault(email.From)?.Address;
         }
     }
 }

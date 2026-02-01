@@ -26,7 +26,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         string alias = $"unittest-{Guid.NewGuid()}";
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-        var distributionList = new EmailRelay.Entities.DistributionList(alias, "null");
+        var distributionList = new EmailRelay.Entities.DistributionList(alias, sendersQuery: "null", recipientsQuery: "null");
         db.DistributionLists.Add(distributionList);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return (distributionList.Id, alias);
