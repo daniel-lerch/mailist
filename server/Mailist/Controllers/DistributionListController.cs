@@ -85,7 +85,7 @@ public class DistributionListController : ControllerBase
         };
     }
 
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "manager,admin")]
     [HttpPost("~/api/distribution-lists")]
     [ProducesResponseType(typeof(DistributionList), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateDistributionList([FromBody] CreateDistributionList request)
@@ -131,7 +131,7 @@ public class DistributionListController : ControllerBase
         return Created($"/api/distribution-lists/{distributionList.Id}", response);
     }
 
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "manager,admin")]
     [HttpPut("~/api/distribution-lists/{id:long}")]
     [ProducesResponseType(typeof(DistributionList), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -174,7 +174,7 @@ public class DistributionListController : ControllerBase
         return Ok(response);
     }
 
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "manager,admin")]
     [HttpDelete("~/api/distribution-lists/{id:long}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

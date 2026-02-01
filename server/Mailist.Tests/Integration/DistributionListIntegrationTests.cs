@@ -42,7 +42,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
 
         // Create a token for subject "2" without admin permissions using the app's TokenService
         var tokenService = factory.Services.GetRequiredService<TokenService>();
-        string token = tokenService.CreateToken("2", isAdmin: false);
+        string token = tokenService.CreateToken("2", isManager: false, isAdmin: false);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var lists = await client.GetFromJsonAsync<DistributionList[]>("/api/distribution-lists", TestContext.Current.CancellationToken);
@@ -63,7 +63,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
 
         // Create a token for subject "2" without admin permissions using the app's TokenService
         var tokenService = factory.Services.GetRequiredService<TokenService>();
-        string token = tokenService.CreateToken("2", isAdmin: false);
+        string token = tokenService.CreateToken("2", isManager: false, isAdmin: false);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var list = await client.GetFromJsonAsync<DistributionList>($"/api/distribution-lists/{id}", TestContext.Current.CancellationToken);

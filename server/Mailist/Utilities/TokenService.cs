@@ -17,7 +17,7 @@ public class TokenService
         this.options = options.Value;
     }
 
-    public string CreateToken(string subject, bool isAdmin, TimeSpan? lifetime = null)
+    public string CreateToken(string subject, bool isManager, bool isAdmin, TimeSpan? lifetime = null)
     {
         var key = new SymmetricSecurityKey(Convert.FromHexString(options.SigningKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -32,10 +32,11 @@ public class TokenService
             new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
         };
 
+        if (isManager)
+            claims.Add(new Claim(ClaimTypes.Role, "manager"));
+
         if (isAdmin)
-        {
             claims.Add(new Claim(ClaimTypes.Role, "admin"));
-        }
 
         var token = new JwtSecurityToken(
             issuer: options.Issuer,

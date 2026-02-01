@@ -35,9 +35,10 @@ public class ProfileController : ControllerBase
         if (configCategory == null)
             return BadRequest("Extension is not initialized. Custom data category 'config' was not found");
 
-        bool isAdmin = permissions.Mailist.EditCustomData.Contains(configCategory.Id);
+        bool isManager = permissions.Mailist.CreateCustomCategory;
+        bool isAdmin = permissions.Mailist.EditCustomCategory.Contains(configCategory.Id);
 
-        string tokenString = tokenService.CreateToken(user.Id.ToString(), isAdmin);
+        string tokenString = tokenService.CreateToken(user.Id.ToString(), isManager, isAdmin);
 
         return new TokenResponse { AccessToken = tokenString };
     }
