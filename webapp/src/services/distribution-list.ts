@@ -4,12 +4,13 @@ export type CreateDistributionList = {
   alias: string
   newsletter: boolean
   recipientsQuery: unknown | null
+  sendersQuery: unknown | null
 }
 
 export type DistributionList = CreateDistributionList & {
   id: number
   recipientCount: number
-  recipientCountTime: string
+  senderCount: number
 }
 
 export async function fetchWithAuth(input: RequestInfo, init?: RequestInit): Promise<Response> {
