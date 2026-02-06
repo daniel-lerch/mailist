@@ -77,7 +77,7 @@ const modes = [{ name: "default", label: "Normaler Filter" }, { name: "advanced"
 const recipientsFilter = ref(MailistFilter.parse(initialValue?.recipientsQuery ?? null))
 const recipientsFilterMode = ref(recipientsFilter.value.isAdvancedFilter() ? modes[1]! : modes[0]!)
 const sendersFilter = ref(MailistFilter.parse(initialValue?.sendersQuery ?? null))
-const sendersFilterMode = ref(modes[0]!)
+const sendersFilterMode = ref(sendersFilter.value.isAdvancedFilter() ? modes[1]! : modes[0]!)
 
 const alias = ref(initialValue?.alias ?? "")
 const newsletter = ref(initialValue?.newsletter ?? false)
