@@ -14,20 +14,33 @@
       <Divider />
       <div class="flex items-center gap-3">
         <Checkbox v-model="newsletter" inputId="newsletter" binary />
-        <label for="newsletter">Newsletter</label>
+        <label for="newsletter" v-tooltip="'Absender und Empfängeradressen werden verborgen'">Newsletter</label>
       </div>
       <Divider />
       <div class="mb-2">Empfänger</div>
       <div class="mb-4 rounded-lg bg-gray-100 dark:bg-gray-950">
         <SelectButton v-model="recipientsFilterMode" :options="modes" optionLabel="label" :allowEmpty="false" />
-        <PersonFilterEditor v-if="recipientsFilterMode.name === 'default'" v-model="recipientsFilter" class="p-2" />
+        <PersonFilterEditor v-if="recipientsFilterMode.name === 'default'" v-model="recipientsFilter" class="p-2">
+          <div class="py-2 text-center italic">Füge Filterkriterien hinzu um Empfänger auszuwählen.</div>
+        </PersonFilterEditor>
         <AdvancedFilterEditor v-else-if="recipientsFilterMode.name === 'advanced'" v-model="recipientsFilter"
           class="p-2" />
       </div>
-      <div class="mb-2">Erlaubte Absender</div>
+      <div class="mb-2">
+        Erlaubte Absender
+        <i v-if="sendersFilter.isEmpty()" class="pi pi-globe text-gray-700 ml-1"
+          v-tooltip="'Jeder darf E-Mails an diese Verteilerliste schicken'"></i>
+        <i v-else class="pi pi-lock text-gray-700 ml-1"
+          v-tooltip="'Nur berechtigte Personen dürfen E-Mails senden'"></i>
+      </div>
       <div class="mb-4 rounded-lg bg-gray-100 dark:bg-gray-950">
         <SelectButton v-model="sendersFilterMode" :options="modes" optionLabel="label" :allowEmpty="false" />
-        <PersonFilterEditor v-if="sendersFilterMode.name === 'default'" v-model="sendersFilter" class="p-2" />
+        <PersonFilterEditor v-if="sendersFilterMode.name === 'default'" v-model="sendersFilter" class="p-2">
+          <div class="py-2 text-center italic">
+            Aktuell ist diese Verteilerliste öffentlich.<br>
+            Füge Filterkriterien hinzu um die erlaubten Absender einzuschränken.
+          </div>
+        </PersonFilterEditor>
         <AdvancedFilterEditor v-else-if="sendersFilterMode.name === 'advanced'" v-model="sendersFilter" class="p-2" />
       </div>
       <Message v-if="error" severity="error" variant="simple" class="mb-4">{{ error }}</Message>

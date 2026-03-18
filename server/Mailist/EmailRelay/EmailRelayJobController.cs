@@ -129,7 +129,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
     {
         if (email.Sender != null)
         {
-            if (MailboxAddress.TryParse(email.Sender, out MailboxAddress mailboxAddress))
+            if (MailboxAddress.TryParse(email.Sender, out MailboxAddress? mailboxAddress))
                 return mailboxAddress.Address;
             else
                 return null;

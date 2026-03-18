@@ -1,13 +1,12 @@
 <template>
   <div class="flex flex-col gap-2">
-    <div v-if="filters.length === 0" class="py-2 mx-auto">
-      <Message v-if="props.modelValue.isAdvancedFilter()" severity="warn" variant="simple"
-        icon="pi pi-exclamation-triangle">
-        Wenn du hier Filterkriterien hinzufügst, wird der erweiterte Filter überschrieben.
-      </Message>
-      <span v-else class="italic">
-        Füge Filterkriterien hinzu um Empfänger auszuwählen.
-      </span>
+    <div v-if="filters.length === 0">
+      <div v-if="props.modelValue.isAdvancedFilter()" class="mx-auto py-2">
+        <Message severity="warn" variant="simple" icon="pi pi-exclamation-triangle">
+          Wenn du hier Filterkriterien hinzufügst, wird der erweiterte Filter überschrieben.
+        </Message>
+      </div>
+      <slot v-else />
     </div>
     <div v-for="(filter, index) in filters" :key="index">
       <div v-if="filter.kind === 'group'">
