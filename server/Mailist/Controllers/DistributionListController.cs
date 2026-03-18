@@ -139,6 +139,7 @@ public class DistributionListController : ControllerBase
         distributionList.Alias = request.Alias;
         distributionList.Flags = request.Newsletter ? DistributionListFlags.Newsletter : DistributionListFlags.None;
         distributionList.RecipientsQuery = request.RecipientsQuery.GetRawText();
+        distributionList.SendersQuery = request.SendersQuery.GetRawText();
 
         int recipientCount;
         int senderCount;

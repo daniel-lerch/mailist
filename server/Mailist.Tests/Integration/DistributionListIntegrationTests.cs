@@ -71,7 +71,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
     [Theory]
     [InlineData([group8, "null"])]
     [InlineData(["null", person17])]
-    public async Task GetDistributionListById_ReturnsList(string recipientsQuery, string sendersQuery)
+    public async Task GetDistributionListById_ReturnsItem(string recipientsQuery, string sendersQuery)
     {
         var (id, alias) = await InsertDistributionListAsync(recipientsQuery, sendersQuery);
 
@@ -132,5 +132,49 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         Assert.Equal(DistributionListFlags.Newsletter, stored.Flags);
         Assert.Equal(recipientsQuery, stored.RecipientsQuery);
         Assert.Equal(sendersQuery, stored.SendersQuery);
+    }
+
+    [Theory]
+    [InlineData([group8, "null", "null", person17])]
+    [InlineData(["null", group8, person17, "null"])]
+    public async Task UpdateDistributionList_UpdatesRecipientsAndSendersQuery(
+        string originalRecipientsQuery,
+        string updatedRecipientsQuery,
+        string originalSendersQuery,
+        string updatedSendersQuery)
+    {
+        var (id, alias) = await InsertDistributionListAsync(originalRecipientsQuery, originalSendersQuery);
+
+        using HttpClient client = factory.CreateClient();
+        var tokenService = factory.Services.GetRequiredService<TokenService>();
+        string token = tokenService.CreateToken("1", isAdmin: true);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var updateRequest = new CreateDistributionList
+        {
+            Alias = alias,
+            Newsletter = true,
+            RecipientsQuery = JsonElement.Parse(updatedRecipientsQuery),
+            SendersQuery = JsonElement.Parse(updatedSendersQuery),
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/distribution-lists/{id}", updateRequest, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var updated = await response.Content.ReadFromJsonAsync<DistributionList>(cancellationToken: TestContext.Current.CancellationToken);
+        Assert.NotNull(updated);
+        Assert.Equal(id, updated!.Id);
+        Assert.Equal(alias, updated.Alias);
+        Assert.True(updated.Newsletter);
+        Assert.Equal(updatedRecipientsQuery, updated.RecipientsQuery.GetRawText());
+        Assert.Equal(updatedSendersQuery, updated.SendersQuery.GetRawText());
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+        var stored = await db.DistributionLists.SingleAsync(dl => dl.Id == id, TestContext.Current.CancellationToken);
+        Assert.Equal(alias, stored.Alias);
+        Assert.Equal(DistributionListFlags.Newsletter, stored.Flags);
+        Assert.Equal(updatedRecipientsQuery, stored.RecipientsQuery);
+        Assert.Equal(updatedSendersQuery, stored.SendersQuery);
     }
 }

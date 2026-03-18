@@ -21,9 +21,10 @@ public class DistributionListService
 
     public async ValueTask<MailboxAddress[]> GetRecipients(DistributionList distributionList, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(distributionList.RecipientsQuery)) return [];
-
         JsonElement filter = JsonElement.Parse(distributionList.RecipientsQuery);
+        if (filter.ValueKind == JsonValueKind.Null)
+            return [];
+
         ChurchQueryRequest<IdNameEmail> query = new(filter);
 
         var people = await churchTools.ChurchQuery(query, cancellationToken);
