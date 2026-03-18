@@ -134,6 +134,6 @@ public class ImapReceiverService
 
         jobQueue.EnsureRunning();
 
-        logger.LogInformation("Downloaded and stored message #{Id} from {From} for {Receiver}", emailEntity.Id, from, receiver ?? "an unkown receiver");
+        logger.LogInformation("Downloaded and stored message #{Id} from {From} for {Receiver}", emailEntity.Id, from, receiver ?? "an unknown receiver");
     }
 }

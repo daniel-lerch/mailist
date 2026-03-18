@@ -57,8 +57,11 @@ export const useChurchtoolsStore = defineStore("churchtools", {
           this.timestamp = Date.now()
           this.promise = null
         })
-        .catch(() => {
+        .catch((err) => {
           this.promise = null
+          // Optionally log the error so it is visible during development/monitoring.
+          console.error("Failed to refresh ChurchTools store:", err)
+          throw err
         }))
     },
   },
