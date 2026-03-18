@@ -5,6 +5,7 @@ import { defineStore } from "pinia"
 export const useChurchtoolsStore = defineStore("churchtools", {
   state: () => ({
     timestamp: 0,
+    promise: null as Promise<void> | null,
     groups: [] as {
       id: number
       name: string
@@ -14,41 +15,51 @@ export const useChurchtoolsStore = defineStore("churchtools", {
     statuses: [] as { id: number; name: string }[],
   }),
   actions: {
-    async refreshIfInvalid() {
-      if (Date.now() - this.timestamp > 5 * 60 * 1000) {
-        const groupsTask = churchtoolsClient
-          .getAllPages<Group>("/groups", { include: ["roles"] })
-          .then(
-            (data) =>
-              (this.groups = data.map((g) => ({
-                id: g.id,
-                name: g.name,
-                roles:
-                  g.roles?.map((r) => ({
-                    id: r.id,
-                    name: r.nameTranslated,
-                    groupTypeRoleId: r.groupTypeRoleId,
-                  })) || [],
-              })))
-          )
+    refreshIfInvalid(): Promise<void> {
+      if (this.promise) {
+        return this.promise
+      }
+      if (Date.now() - this.timestamp < 5 * 60 * 1000) {
+        return Promise.resolve()
+      }
 
-        const personsTask = churchtoolsClient.getAllPages<Person>("/persons").then(
+      const groupsTask = churchtoolsClient
+        .getAllPages<Group>("/groups", { include: ["roles"] })
+        .then(
           (data) =>
-            (this.persons = data.map((p) => {
-              if (p.nickname)
-                return { id: p.id, name: `${p.firstName} (${p.nickname}) ${p.lastName}` }
-              else return { id: p.id, name: `${p.firstName} ${p.lastName}` }
-            }))
+            (this.groups = data.map((g) => ({
+              id: g.id,
+              name: g.name,
+              roles:
+                g.roles?.map((r) => ({
+                  id: r.id,
+                  name: r.nameTranslated,
+                  groupTypeRoleId: r.groupTypeRoleId,
+                })) || [],
+            })))
         )
 
-        const statusesTask = churchtoolsClient
-          .get<Status[]>("/statuses")
-          .then((data) => (this.statuses = data.map((s) => ({ id: s.id, name: s.nameTranslated }))))
+      const personsTask = churchtoolsClient.getAllPages<Person>("/persons").then(
+        (data) =>
+          (this.persons = data.map((p) => {
+            if (p.nickname)
+              return { id: p.id, name: `${p.firstName} (${p.nickname}) ${p.lastName}` }
+            else return { id: p.id, name: `${p.firstName} ${p.lastName}` }
+          }))
+      )
 
-        await Promise.all([groupsTask, personsTask, statusesTask])
+      const statusesTask = churchtoolsClient
+        .get<Status[]>("/statuses")
+        .then((data) => (this.statuses = data.map((s) => ({ id: s.id, name: s.nameTranslated }))))
 
-        this.timestamp = Date.now()
-      }
+      return (this.promise = Promise.all([groupsTask, personsTask, statusesTask])
+        .then(() => {
+          this.timestamp = Date.now()
+          this.promise = null
+        })
+        .catch(() => {
+          this.promise = null
+        }))
     },
   },
 })
