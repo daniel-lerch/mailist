@@ -14,7 +14,8 @@ namespace Mailist.Migrations
                 name: "SendersQuery",
                 table: "DistributionLists",
                 type: "longtext",
-                nullable: false)
+                nullable: false,
+                defaultValue: "null")
                 .Annotation("MySql:CharSet", "utf8mb4");
         }
 
