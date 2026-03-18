@@ -77,6 +77,8 @@ public class Program
 
         services.AddSingleton<TokenService>();
 
+        services.AddSingleton<ChurchQueryCacheService>();
+
         if (configuration.GetValue<bool>("EmailDelivery:Enable"))
         {
             services.AddSingleton<JobQueue<EmailDeliveryJobController>>();

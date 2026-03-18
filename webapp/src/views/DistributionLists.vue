@@ -10,12 +10,24 @@
         </RouterLink>
       </Button>
     </div>
-    <DataTable :value="distributionLists">
-      <Column field="alias" header="Alias" />
-      <Column field="recipientCount" header="Anzahl Empfänger" />
+    <DataTable :value="distributionLists" removableSort>
+      <Column field="alias" header="Alias" sortable />
+      <Column field="recipientCount" header="Anzahl Empfänger" sortable />
       <Column field="recipientsQuery" header="Empfänger">
         <template #body="slotProps">
           <PersonFilterCell :filter="slotProps.data.recipientsQuery" />
+        </template>
+      </Column>
+      <Column field="senderCount" header="Erlaubte Absender" sortable>
+        <template #body="slotProps">
+          <span v-if="slotProps.data.sendersQuery">{{ slotProps.data.senderCount }}</span>
+          <span v-else>-</span>
+        </template>
+      </Column>
+      <Column field="sendersQuery" header="Absender">
+        <template #body="slotProps">
+          <PersonFilterCell v-if="slotProps.data.sendersQuery" :filter="slotProps.data.sendersQuery" />
+          <span v-else><i class="pi pi-globe"></i> Alle</span>
         </template>
       </Column>
       <Column>

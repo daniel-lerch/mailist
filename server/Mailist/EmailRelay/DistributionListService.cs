@@ -2,6 +2,7 @@
 using ChurchTools.Model;
 using Mailist.EmailRelay.Entities;
 using MimeKit;
+using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -20,9 +21,10 @@ public class DistributionListService
 
     public async ValueTask<MailboxAddress[]> GetRecipients(DistributionList distributionList, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(distributionList.RecipientsQuery)) return [];
-
         JsonElement filter = JsonElement.Parse(distributionList.RecipientsQuery);
+        if (filter.ValueKind == JsonValueKind.Null)
+            return [];
+
         ChurchQueryRequest<IdNameEmail> query = new(filter);
 
         var people = await churchTools.ChurchQuery(query, cancellationToken);
@@ -35,5 +37,19 @@ public class DistributionListService
                 name: string.Join(", ", grouping.Select(r => r.FirstName)) + ' ' + grouping.First().LastName,
                 address: grouping.Key))
             .ToArray();
+    }
+
+    public async ValueTask<bool> IsSenderPermitted(string? senderEmail, DistributionList distributionList, CancellationToken cancellationToken)
+    {
+        JsonElement filter = JsonElement.Parse(distributionList.SendersQuery);
+        if (filter.ValueKind == JsonValueKind.Null)
+            return true;
+
+        if (string.IsNullOrWhiteSpace(senderEmail))
+            return false;
+
+        ChurchQueryRequest<IdNameEmail> query = new(filter);
+        var people = await churchTools.ChurchQuery(query, cancellationToken);
+        return people.Any(p => p.Email.Equals(senderEmail, StringComparison.OrdinalIgnoreCase));
     }
 }
