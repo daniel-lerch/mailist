@@ -113,9 +113,7 @@ export async function getCustomDataCategories<T extends object>(
     return categories.map((category) => {
         const { data, ...rest } = category;
 
-        let parsedData: T;
-
-        parsedData = safeParseJSON(data, {} as T);
+        const parsedData = safeParseJSON(data, {} as T);
 
         return {
             ...rest,
@@ -238,13 +236,14 @@ export async function getCustomDataValues<T extends object>(
  * Create a new custom data value
  * implements POST `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`
  * @param moduleId - optional module id - otherwise tries default
+ * @returns - the created custom data value
  */
 export async function createCustomDataValue(
     payload: CustomModuleDataValueCreate,
     moduleId?: number,
-): Promise<void> {
+): Promise<CustomModuleDataValue> {
     moduleId = await resolveModuleId(moduleId);
-    const newValue: string = await churchtoolsClient.post(
+    const newValue: CustomModuleDataValue = await churchtoolsClient.post(
         `/custommodules/${moduleId}/customdatacategories/${payload.dataCategoryId}/customdatavalues`,
         payload,
     );
@@ -252,6 +251,7 @@ export async function createCustomDataValue(
         `Created data value in category ${payload.dataCategoryId}:`,
         newValue,
     );
+    return newValue;
 }
 
 /**

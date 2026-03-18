@@ -34,7 +34,7 @@
     <footer>
       <div class="max-w-7xl mx-auto px-4 py-3 text-gray-600">
         <small class="text-sm text-gray-500">
-          Copyright &copy; 2022-2025 Daniel Lerch and Benjamin Stieler
+          Copyright &copy; 2022-2026 Daniel Lerch
         </small>
       </div>
     </footer>

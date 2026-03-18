@@ -73,7 +73,8 @@ public class MimeMessageCreationService
         message.To.Add(address);
         if (from != null)
             message.ReplyTo.Add(from);
-        message.Subject = inboxEmail.Subject;
+        if (inboxEmail.Subject != null)
+            message.Subject = inboxEmail.Subject;
         message.Body = body;
         return message;
     }
