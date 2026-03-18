@@ -16,6 +16,8 @@ namespace Mailist.EmailRelay;
 
 public class ImapReceiverService
 {
+    private const int FetchBatchSize = 100;
+
     private readonly ILogger<ImapReceiverService> logger;
     private readonly IOptions<EmailRelayOptions> options;
     private readonly DatabaseContext database;
@@ -40,31 +42,16 @@ public class ImapReceiverService
         MessageSummaryItems fetchItems =
             MessageSummaryItems.UniqueId | MessageSummaryItems.Flags | MessageSummaryItems.Headers | MessageSummaryItems.Body;
 
-        IList<IMessageSummary> messages = await imap.Inbox.FetchAsync(min: 0, max: -1, fetchItems, stoppingToken);
+        int messageCount = imap.Inbox.Count;
 
-        foreach (IMessageSummary message in messages)
+        for (int min = 0; min < messageCount; min += FetchBatchSize)
         {
-            InboxEmail? savedEmail = await database.InboxEmails.SingleOrDefaultAsync(email => email.UniqueId == message.UniqueId.Id, stoppingToken);
+            int max = Math.Min(min + FetchBatchSize - 1, messageCount - 1);
+            IList<IMessageSummary> messages = await imap.Inbox.FetchAsync(min, max, fetchItems, stoppingToken);
 
-            if (savedEmail == null)
+            foreach (IMessageSummary message in messages)
             {
-                // Leave this message as is if it has been read by a user other than Mailist
-                if (message.Flags!.Value.HasFlag(MessageFlags.Seen)) continue;
-
-                await QueueEmailForProcessing(imap, message, stoppingToken);
-            }
-            else
-            {
-                // Check if message has been downloaded but not marked as seen
-                if (!message.Flags!.Value.HasFlag(MessageFlags.Seen))
-                    await imap.Inbox.AddFlagsAsync(message.UniqueId, MessageFlags.Seen, silent: true, stoppingToken);
-
-                // Delete email if download is longer ago than imap prune interval
-                if (savedEmail.DownloadTime < DateTime.UtcNow.AddDays(-options.Value.ImapRetentionIntervalInDays))
-                {
-                    logger.LogDebug("Pruning message {Id} from IMAP inbox", savedEmail.Id);
-                    await imap.Inbox.AddFlagsAsync(message.UniqueId, MessageFlags.Deleted, silent: true, stoppingToken);
-                }
+                await ProcessMessage(message, stoppingToken);
             }
         }
 
@@ -72,7 +59,35 @@ public class ImapReceiverService
         await imap.DisconnectAsync(quit: true, stoppingToken);
     }
 
-    private async Task QueueEmailForProcessing(ImapClient imap, IMessageSummary message, CancellationToken stoppingToken)
+    private async Task ProcessMessage(IMessageSummary message, CancellationToken stoppingToken)
+    {
+        InboxEmail? savedEmail = await database.InboxEmails.SingleOrDefaultAsync(email => email.UniqueId == message.UniqueId.Id, stoppingToken);
+
+        if (savedEmail == null)
+        {
+            // Leave this message as is if it has been read by a user other than Mailist
+            if (message.Flags!.Value.HasFlag(MessageFlags.Seen)) return;
+
+            await QueueEmailForProcessing(message, stoppingToken);
+
+            await message.Folder.AddFlagsAsync(message.UniqueId, MessageFlags.Seen, silent: true, stoppingToken);
+        }
+        else
+        {
+            // Check if message has been downloaded but not marked as seen
+            if (!message.Flags!.Value.HasFlag(MessageFlags.Seen))
+                await message.Folder.AddFlagsAsync(message.UniqueId, MessageFlags.Seen, silent: true, stoppingToken);
+
+            // Delete email if download is longer ago than imap prune interval
+            if (savedEmail.DownloadTime < DateTime.UtcNow.AddDays(-options.Value.ImapRetentionIntervalInDays))
+            {
+                logger.LogDebug("Pruning message {Id} from IMAP inbox", savedEmail.Id);
+                await message.Folder.AddFlagsAsync(message.UniqueId, MessageFlags.Deleted, silent: true, stoppingToken);
+            }
+        }
+    }
+
+    private async Task QueueEmailForProcessing(IMessageSummary message, CancellationToken stoppingToken)
     {
         byte[]? headerContent = null;
 
@@ -87,7 +102,7 @@ public class ImapReceiverService
         byte[]? bodyContent = null;
 
         // Dispose body and memoryStream directly after use to limit memory consumption
-        using (MimeEntity body = await imap.Inbox.GetBodyPartAsync(message.UniqueId, message.Body, stoppingToken))
+        using (MimeEntity body = await message.Folder.GetBodyPartAsync(message.UniqueId, message.Body, stoppingToken))
         using (System.IO.MemoryStream memoryStream = new())
         {
             // Writing to a MemoryStream is a synchronous operation that won't be cancelled anyhow
@@ -118,8 +133,6 @@ public class ImapReceiverService
         await database.SaveChangesAsync(stoppingToken);
 
         jobQueue.EnsureRunning();
-
-        await imap.Inbox.AddFlagsAsync(message.UniqueId, MessageFlags.Seen, silent: true, stoppingToken);
 
         logger.LogInformation("Downloaded and stored message #{Id} from {From} for {Receiver}", emailEntity.Id, from, receiver ?? "an unkown receiver");
     }
