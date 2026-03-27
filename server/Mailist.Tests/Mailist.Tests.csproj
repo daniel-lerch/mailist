@@ -27,4 +27,9 @@
     <ProjectReference Include="..\Mailist\Mailist.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\23437.body" />
+    <EmbeddedResource Include="Resources\23437.header" />
+  </ItemGroup>
+
 </Project>
