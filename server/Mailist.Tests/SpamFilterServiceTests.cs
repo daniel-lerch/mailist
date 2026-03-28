@@ -33,7 +33,7 @@ public class SpamFilterServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Test()
+    public async Task FurnitureIsClassifiedAsIrrelevant()
     {
         Assert.SkipWhen(spamFilterService == null, "Spam filter service is not enabled in configuration.");
 
@@ -48,7 +48,9 @@ public class SpamFilterServiceTests : IDisposable
             header: LoadManifestResourceBytes("23437.header"),
             body: LoadManifestResourceBytes("23437.body"));
 
-        await spamFilterService.ClassifyMessage(email, TestContext.Current.CancellationToken);
+        var result = await spamFilterService.ClassifyMessage(email, TestContext.Current.CancellationToken);
+        Assert.Equal(SpamCategory.Irrelevant, result.Category);
+        Assert.NotEmpty(result.Justification);
     }
 
     public void Dispose()
