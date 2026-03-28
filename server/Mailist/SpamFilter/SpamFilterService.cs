@@ -1,5 +1,7 @@
 ﻿using Mailist.EmailRelay.Entities;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MimeKit;
 using Mistral.SDK;
 using System;
@@ -15,27 +17,34 @@ namespace Mailist.SpamFilter;
 
 public class SpamFilterService
 {
-    private const int EmailMaxContextLength = 5000;
-
     private readonly IChatClient chatClient;
     private readonly MimeTextExtractionService extractionService;
+    private readonly IOptions<SpamFilterOptions> options;
+    private readonly ChatOptions chatOptions;
+    private readonly JsonSerializerOptions jsonOptions;
+    private readonly ILogger<SpamFilterService> logger;
 
-    public SpamFilterService(IChatClient chatClient, MimeTextExtractionService extractionService)
+    public SpamFilterService(IChatClient chatClient, MimeTextExtractionService extractionService, IOptions<SpamFilterOptions> options, ILogger<SpamFilterService> logger)
     {
         this.chatClient = chatClient;
         this.extractionService = extractionService;
+        this.options = options;
+        this.logger = logger;
+
+        chatOptions = new()
+        {
+            ModelId = ModelDefinitions.MistralSmall,
+            MaxOutputTokens = 500,
+        };
+
+        jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        jsonOptions.Converters.Add(new JsonStringEnumConverter());
     }
 
     public async Task<ClassificationResult> ClassifyMessage(InboxEmail email, CancellationToken cancellationToken)
     {
         if (email.Body == null)
             throw new ArgumentException("Body must not be null for message classification", nameof(email));
-
-        ChatOptions chatOptions = new()
-        {
-            ModelId = ModelDefinitions.MistralSmall,
-            MaxOutputTokens = 500,
-        };
 
         StringBuilder userPrompt = new();
         userPrompt.Append("From: ");
@@ -51,18 +60,20 @@ public class SpamFilterService
 
         MimeEntity body;
         using (MemoryStream bodyStream = new(email.Body))
-            body = MimeEntity.Load(bodyStream);
+            body = MimeEntity.Load(bodyStream, cancellationToken);
 
         if (!extractionService.TryExtractText(body, out string? text))
         {
+            logger.LogInformation("Email #{Id} from {From} has no text content.", email.Id, email.From);
             return new ClassificationResult { Category = SpamCategory.NoTextContent, Justification = string.Empty };
         }
 
-        if (text.Length > EmailMaxContextLength)
+        int remaining = Math.Max(0, options.Value.MaxInputLength - userPrompt.Length);
+        if (text.Length > remaining)
         {
-            userPrompt.Append(text.AsSpan()[..EmailMaxContextLength]);
+            userPrompt.Append(text.AsSpan()[..remaining]);
             userPrompt.AppendLine();
-            userPrompt.Append(text.Length - EmailMaxContextLength);
+            userPrompt.Append(text.Length - remaining);
             userPrompt.AppendLine(" more characters truncated.");
         }
         else
@@ -70,34 +81,43 @@ public class SpamFilterService
             userPrompt.AppendLine(text);
         }
 
-        string systemPrompt = """
-            ﻿Du bist ein intelligenter Agent, der E-Mails sortiert. Du arbeitest für die Christuskirche Bensheim-Auerbach, eine evangelisch freikirche Baptistengemeinde in Hessen in Deutschland.
-            Jede E-Mail musst du in eine der drei Kategorien einsortieren:
-
-            - legitime E-Mails `Legitimate`. Das sind z.B. Anfragen, die die Kirchengemeinde betreffen oder Newsletter von christlichen Organisationen und Verbünden.
-            - irrelevante E-Mails `Irrelevant`. Das sind z.B. Verkaufsangebote für Arbeitskleidung oder Angebote für Webseiten-Entwicklung.
-            - potenziell gefährliche E-Mails `Dangerous`. Das sind z.B. Phishing E-Mails bei denen Links nicht zur Domain der vorgetäuschten Firma passen oder zu URL Shortenern führen und dadurch nicht erkannt werden können. Dazu gehören aber auch versuchte SQL Injection oder XSS-Angriffe.
-
-            Ordne diese E-Mail in eine der drei oben genannten Kategorien ein und antworte in folgendem JSON Schema:
-            ```json
-            {
-              "justification": "<SHORT JUSTIFICATION IN PLAIN TEXT>",
-              "category": "Legitimate | Irrelevant | Dangerous"
-            }
-            ```
-            """;
-
         List<ChatMessage> messages = [
-            new(ChatRole.System, systemPrompt),
+            new(ChatRole.System, options.Value.SystemPrompt),
             new(ChatRole.User, userPrompt.ToString())
         ];
 
-        var response = await chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
+        ChatResponse response;
+        try
+        {
+            response = await chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception while calling chat client for email #{Id} from {From}.", email.Id, email.From);
+            return new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "Exception while calling chat client: " + ex.Message };
+        }
+
         string json = response.Text.Replace("```json", "").Replace("```", "");
-        JsonSerializerOptions jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-        jsonOptions.Converters.Add(new JsonStringEnumConverter());
-        return JsonSerializer.Deserialize<ClassificationResult>(json, jsonOptions)
-            ?? new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "Failed to parse JSON: " + json };
+
+        try
+        {
+            ClassificationResult? result = JsonSerializer.Deserialize<ClassificationResult>(json, jsonOptions);
+            if (result == null)
+            {
+                logger.LogError("JSON deserialization returned null for email #{Id} from {From}. Response: {Response}", email.Id, email.From, json);
+                return new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "JSON deserialization returned null. Response: " + json };
+            }
+            else
+            {
+                logger.LogInformation("Email #{Id} from {From} classified as {Category}.", email.Id, email.From, result.Category);
+                return result;
+            }
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(ex, "JSON deserialization error for email #{Id} from {From}. Response: {Response}", email.Id, email.From, json);
+            return new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "JSON deserialization error: " + ex.Message + ". Response: " + json };
+        }
     }
 
     public class ClassificationResult

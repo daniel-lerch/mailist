@@ -1,9 +1,13 @@
 ﻿using Mailist.EmailRelay.Entities;
+using Mailist.Extensions;
 using Mailist.SpamFilter;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mistral.SDK;
-using System.IO;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -11,7 +15,7 @@ namespace Mailist.Tests;
 
 public class SpamFilterServiceTests : IDisposable
 {
-    private readonly MistralClient? mistralClient;
+    private readonly ServiceProvider? serviceProvider;
     private readonly SpamFilterService? spamFilterService;
 
     public SpamFilterServiceTests()
@@ -22,13 +26,22 @@ public class SpamFilterServiceTests : IDisposable
             .AddEnvironmentVariables()
             .Build();
 
-        if (configuration.GetValue<bool>("SpamFilter:Enable"))
+        ServiceCollection services = new();
+        services.AddMailistOptions(configuration);
+        services.AddLogging();
+        services.AddSingleton<MimeTextExtractionService>();
+        services.AddSingleton<IChatClient>(serviceProvider =>
         {
-            string apiKey = configuration["SpamFilter:ApiKey"]
-                ?? throw new InvalidOperationException("Missing configuration value 'SpamFilter:ApiKey'.");
+            var options = serviceProvider.GetRequiredService<IOptions<SpamFilterOptions>>();
+            return new MistralClient(new APIAuthentication(options.Value.ApiKey)).Completions;
+        });
+        services.AddSingleton<SpamFilterService>();
+        serviceProvider = services.BuildServiceProvider();
 
-            mistralClient = new MistralClient(new APIAuthentication(apiKey));
-            spamFilterService = new(mistralClient.Completions, new());
+        var options = serviceProvider.GetRequiredService<IOptions<SpamFilterOptions>>();
+        if (options.Value.Enable)
+        {
+            spamFilterService = serviceProvider.GetRequiredService<SpamFilterService>();
         }
     }
 
@@ -55,7 +68,7 @@ public class SpamFilterServiceTests : IDisposable
 
     public void Dispose()
     {
-        mistralClient?.Dispose();
+        serviceProvider?.Dispose();
     }
 
     private static byte[] LoadManifestResourceBytes(string resourceFileName)
