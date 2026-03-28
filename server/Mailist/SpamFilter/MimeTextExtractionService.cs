@@ -1,4 +1,8 @@
-﻿using MimeKit;
+﻿using AngleSharp;
+using AngleSharp.Html.Dom;
+using AngleSharp.Html.Parser;
+using MimeKit;
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mailist.SpamFilter;
@@ -17,7 +21,7 @@ public class MimeTextExtractionService
             else if (multipart.TryGetValue(MimeKit.Text.TextFormat.Html, out TextPart? htmlPart))
             {
                 text = ExtractHtmlText(htmlPart);
-                return true;
+                return text != null;
             }
         }
 
@@ -31,7 +35,7 @@ public class MimeTextExtractionService
             else if (textPart.Format == MimeKit.Text.TextFormat.Html)
             {
                 text = ExtractHtmlText(textPart);
-                return true;
+                return text != null;
             }
         }
 
@@ -44,10 +48,24 @@ public class MimeTextExtractionService
         return textPart.Text;
     }
 
-    public string ExtractHtmlText(TextPart htmlPart)
+    public string? ExtractHtmlText(TextPart htmlPart)
     {
-        // For simplicity, we just return the raw HTML here. In a real implementation, you might want to use an HTML parser
-        // to extract the visible text content and ignore tags, scripts, styles, etc.
-        return htmlPart.Text;
+        IBrowsingContext context = BrowsingContext.New();
+        IHtmlParser parser = context.GetService<IHtmlParser>()
+            ?? throw new ApplicationException("Failed to get HTML parser from AngleSharp context.");
+
+        IHtmlDocument document = parser.ParseDocument(htmlPart.Text);
+
+        foreach (var element in document.QuerySelectorAll("a"))
+        {
+            // Replace anchor text with href value
+            string? href = element.GetAttribute("href");
+            if (!string.IsNullOrEmpty(href))
+            {
+                element.TextContent = href;
+            }
+        }
+
+        return document.Body?.TextContent;
     }
 }

@@ -13,6 +13,8 @@ namespace Mailist.SpamFilter;
 
 public class SpamFilterService
 {
+    private const int EmailMaxContextLength = 5000;
+
     private readonly IChatClient chatClient;
     private readonly MimeTextExtractionService extractionService;
 
@@ -48,10 +50,23 @@ public class SpamFilterService
         using (MemoryStream bodyStream = new(email.Body))
             body = MimeEntity.Load(bodyStream);
 
-        if (extractionService.TryExtractText(body, out string? text))
-            userPrompt.AppendLine(text);
+        if (!extractionService.TryExtractText(body, out string? text))
+        {
+            // TODO: Reject email with no text content
+            return;
+        }
 
-        // TODO: Reject email with no text content
+        if (text.Length > EmailMaxContextLength)
+        {
+            userPrompt.Append(text.AsSpan()[..EmailMaxContextLength]);
+            userPrompt.AppendLine();
+            userPrompt.Append(text.Length - EmailMaxContextLength);
+            userPrompt.AppendLine(" more characters truncated.");
+        }
+        else
+        {
+            userPrompt.AppendLine(text);
+        }
 
         List<ChatMessage> messages = [
             new(ChatRole.System, ""),

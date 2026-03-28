@@ -1,28 +1,42 @@
 ﻿using Mailist.EmailRelay.Entities;
 using Mailist.SpamFilter;
-using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Mistral.SDK;
 using System.IO;
-using System.Text;
+using System;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace Mailist.Tests;
 
-public class SpamFilterServiceTests
+public class SpamFilterServiceTests : IDisposable
 {
-    private readonly SpamFilterService spamFilterService;
+    private readonly MistralClient? mistralClient;
+    private readonly SpamFilterService? spamFilterService;
 
     public SpamFilterServiceTests()
     {
-        // TODO: Read API Key from configuration
-        IChatClient client = new MistralClient().Completions;
-        spamFilterService = new(client, new());
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
+            .AddUserSecrets<Program>(optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        if (configuration.GetValue<bool>("SpamFilter:Enable"))
+        {
+            string apiKey = configuration["SpamFilter:ApiKey"]
+                ?? throw new InvalidOperationException("Missing configuration value 'SpamFilter:ApiKey'.");
+
+            mistralClient = new MistralClient(new APIAuthentication(apiKey));
+            spamFilterService = new(mistralClient.Completions, new());
+        }
     }
 
     [Fact]
     public async Task Test()
     {
+        Assert.SkipWhen(spamFilterService == null, "Spam filter service is not enabled in configuration.");
+
         InboxEmail email = new(
             uniqueId: null,
             subject: "Massagesessel als luxuriöser Leder-Chefsessel mit Liegefunktion – für Ihre Gesundheit",
@@ -31,20 +45,28 @@ public class SpamFilterServiceTests
             replyTo: "info@premiumboxx.de",
             to: "kontakt@christuskirche.com",
             receiver: "kontakt@christuskirche.com",
-            header: Encoding.UTF8.GetBytes(LoadManifestResourceText("23437.header")),
-            body: Encoding.UTF8.GetBytes(LoadManifestResourceText("23437.body")));
+            header: LoadManifestResourceBytes("23437.header"),
+            body: LoadManifestResourceBytes("23437.body"));
 
         await spamFilterService.ClassifyMessage(email, TestContext.Current.CancellationToken);
     }
 
-    private static string LoadManifestResourceText(string resourceFileName)
+    public void Dispose()
+    {
+        mistralClient?.Dispose();
+    }
+
+    private static byte[] LoadManifestResourceBytes(string resourceFileName)
     {
         string resourceName = $"Mailist.Tests.Resources.{resourceFileName}";
 
         using Stream? stream = typeof(SpamFilterServiceTests).Assembly.GetManifestResourceStream(resourceName)
             ?? throw new FileNotFoundException($"Manifest resource stream '{resourceName}' was not found.");
 
-        using StreamReader reader = new(stream, Encoding.UTF8);
-        return reader.ReadToEnd();
+        byte[] buffer = new byte[stream.Length];
+
+        stream.ReadExactly(buffer);
+
+        return buffer;
     }
 }
