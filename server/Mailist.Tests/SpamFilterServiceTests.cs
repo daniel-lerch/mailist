@@ -46,6 +46,26 @@ public class SpamFilterServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task EasterPathIsClassifiedAsLegitimate()
+    {
+        Assert.SkipWhen(spamFilterService == null, "Spam filter service is not enabled in configuration.");
+        InboxEmail email = new(
+            uniqueId: null,
+            subject: "Herzliche Einladung zu einem Osterweg in der FeG Jugenheim",
+            from: "Christine <c***@fegsj.de>",
+            sender: null,
+            replyTo: null,
+            to: "Christine <c***@t-online.de>",
+            receiver: "kontakt@christuskirche.com",
+            header: LoadManifestResourceBytes("23377.header"),
+            body: LoadManifestResourceBytes("23377.body"));
+
+        var result = await spamFilterService.ClassifyMessage(email, TestContext.Current.CancellationToken);
+        Assert.Equal(SpamCategory.Legitimate, result.Category);
+        Assert.NotEmpty(result.Justification);
+    }
+
+    [Fact]
     public async Task FurnitureIsClassifiedAsIrrelevant()
     {
         Assert.SkipWhen(spamFilterService == null, "Spam filter service is not enabled in configuration.");
