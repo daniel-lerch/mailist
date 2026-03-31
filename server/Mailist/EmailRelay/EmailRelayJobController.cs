@@ -3,7 +3,9 @@ using Mailist.EmailRelay.Entities;
 using Mailist.SpamFilter;
 using Mailist.Utilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MimeKit;
 using System;
 using System.Linq;
@@ -18,23 +20,26 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
     private readonly ILogger<EmailRelayJobController> logger;
     private readonly DistributionListService distributionListService;
     private readonly MimeMessageCreationService mimeMessageService;
-    private readonly SpamFilterService spamFilterService;
+    private readonly IOptions<SpamFilterOptions> spamFilterOptions;
     private readonly EmailDeliveryService emailDelivery;
+    private readonly IServiceProvider serviceProvider;
 
     public EmailRelayJobController(
         DatabaseContext database,
         ILogger<EmailRelayJobController> logger,
         DistributionListService distributionListService,
         MimeMessageCreationService emailRelay,
-        SpamFilterService spamFilterService,
-        EmailDeliveryService emailDelivery)
+        IOptions<SpamFilterOptions> spamFilterOptions,
+        EmailDeliveryService emailDelivery,
+        IServiceProvider serviceProvider)
     {
         this.database = database;
         this.logger = logger;
         this.distributionListService = distributionListService;
         this.mimeMessageService = emailRelay;
-        this.spamFilterService = spamFilterService;
+        this.spamFilterOptions = spamFilterOptions;
         this.emailDelivery = emailDelivery;
+        this.serviceProvider = serviceProvider;
     }
 
     protected override async ValueTask<InboxEmail?> NextPendingOrDefault(CancellationToken cancellationToken)
@@ -109,8 +114,9 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
             return;
         }
 
-        if (distributionList.Flags.HasFlag(DistributionListFlags.SpamFilter))
+        if (spamFilterOptions.Value.Enable && distributionList.Flags.HasFlag(DistributionListFlags.SpamFilter))
         {
+            SpamFilterService spamFilterService = serviceProvider.GetRequiredService<SpamFilterService>();
             var classification = await spamFilterService.ClassifyMessage(email, cancellationToken);
             email.SpamCategory = classification.Category;
             email.SpamJustification = classification.Justification;

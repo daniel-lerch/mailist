@@ -26,11 +26,11 @@ public class MimeTextExtractionService
 
         if (entity is TextPart textPart)
         {
-            if (textPart.Format == MimeKit.Text.TextFormat.Plain)
+            if (textPart.IsPlain)
             {
                 return ExtractPlainText(textPart);
             }
-            else if (textPart.Format == MimeKit.Text.TextFormat.Html)
+            else if (textPart.IsHtml)
             {
                 return await ExtractHtmlText(textPart);
             }

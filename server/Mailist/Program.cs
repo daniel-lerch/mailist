@@ -3,13 +3,17 @@ using Mailist.ChurchTools;
 using Mailist.EmailDelivery;
 using Mailist.EmailRelay;
 using Mailist.Extensions;
+using Mailist.SpamFilter;
 using Mailist.Utilities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Mistral.SDK;
 using System.Threading.Tasks;
 
 namespace Mailist;
@@ -93,6 +97,17 @@ public class Program
                 services.AddScoped<DistributionListService>();
                 services.AddScoped<MimeMessageCreationService>();
                 services.AddHostedService<EmailRelayHostedService>();
+
+                if (configuration.GetValue<bool>("SpamFilter:Enable"))
+                {
+                    services.AddSingleton<MimeTextExtractionService>();
+                    services.AddSingleton<IChatClient>(serviceProvider =>
+                    {
+                        var options = serviceProvider.GetRequiredService<IOptions<SpamFilterOptions>>();
+                        return new MistralClient(new APIAuthentication(options.Value.ApiKey)).Completions;
+                    });
+                    services.AddSingleton<SpamFilterService>();
+                }
             }
         }
     }
