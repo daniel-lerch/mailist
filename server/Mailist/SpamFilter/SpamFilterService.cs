@@ -62,7 +62,8 @@ public class SpamFilterService
         using (MemoryStream bodyStream = new(email.Body))
             body = MimeEntity.Load(bodyStream, cancellationToken);
 
-        if (!extractionService.TryExtractText(body, out string? text))
+        string? text = await extractionService.ExtractText(body);
+        if (text == null)
         {
             logger.LogInformation("Email #{Id} from {From} has no text content.", email.Id, email.From);
             return new ClassificationResult { Category = SpamCategory.NoTextContent, Justification = string.Empty };

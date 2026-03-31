@@ -11,14 +11,14 @@ using System.IO;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Mailist.Tests;
+namespace Mailist.Tests.Integration;
 
-public class SpamFilterServiceTests : IDisposable
+public class SpamFilterServiceIntegrationTests : IDisposable
 {
     private readonly ServiceProvider? serviceProvider;
     private readonly SpamFilterService? spamFilterService;
 
-    public SpamFilterServiceTests()
+    public SpamFilterServiceIntegrationTests()
     {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
@@ -95,7 +95,7 @@ public class SpamFilterServiceTests : IDisposable
     {
         string resourceName = $"Mailist.Tests.Resources.{resourceFileName}";
 
-        using Stream? stream = typeof(SpamFilterServiceTests).Assembly.GetManifestResourceStream(resourceName)
+        using Stream? stream = typeof(SpamFilterServiceIntegrationTests).Assembly.GetManifestResourceStream(resourceName)
             ?? throw new FileNotFoundException($"Manifest resource stream '{resourceName}' was not found.");
 
         byte[] buffer = new byte[stream.Length];

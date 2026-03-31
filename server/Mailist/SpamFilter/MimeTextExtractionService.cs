@@ -3,25 +3,24 @@ using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using MimeKit;
 using System;
-using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Mailist.SpamFilter;
 
 public class MimeTextExtractionService
 {
-    public bool TryExtractText(MimeEntity entity, [NotNullWhen(true)] out string? text)
+    public async ValueTask<string?> ExtractText(MimeEntity entity)
     {
         if (entity is Multipart multipart)
         {
             if (multipart.TryGetValue(MimeKit.Text.TextFormat.Plain, out TextPart? plainPart))
             {
-                text = ExtractPlainText(plainPart);
-                return true;
+                return ExtractPlainText(plainPart);
             }
             else if (multipart.TryGetValue(MimeKit.Text.TextFormat.Html, out TextPart? htmlPart))
             {
-                text = ExtractHtmlText(htmlPart);
-                return text != null;
+                return await ExtractHtmlText(htmlPart);
             }
         }
 
@@ -29,32 +28,40 @@ public class MimeTextExtractionService
         {
             if (textPart.Format == MimeKit.Text.TextFormat.Plain)
             {
-                text = ExtractPlainText(textPart);
-                return true;
+                return ExtractPlainText(textPart);
             }
             else if (textPart.Format == MimeKit.Text.TextFormat.Html)
             {
-                text = ExtractHtmlText(textPart);
-                return text != null;
+                return await ExtractHtmlText(textPart);
             }
         }
 
-        text = null;
-        return false;
+        return null;
     }
 
-    public string ExtractPlainText(TextPart textPart)
+    private static string ExtractPlainText(TextPart textPart)
     {
         return textPart.Text;
     }
 
-    public string? ExtractHtmlText(TextPart htmlPart)
+    private static async ValueTask<string?> ExtractHtmlText(TextPart htmlPart)
     {
         IBrowsingContext context = BrowsingContext.New();
         IHtmlParser parser = context.GetService<IHtmlParser>()
             ?? throw new ApplicationException("Failed to get HTML parser from AngleSharp context.");
 
-        IHtmlDocument document = parser.ParseDocument(htmlPart.Text);
+        using CancellationTokenSource cts = new();
+        cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+        IHtmlDocument document;
+        try
+        {
+            document = await parser.ParseDocumentAsync(htmlPart.Text, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
 
         foreach (var element in document.QuerySelectorAll("a"))
         {
