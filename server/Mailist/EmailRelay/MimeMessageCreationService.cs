@@ -2,6 +2,7 @@
 using ChurchTools.Model;
 using Mailist.EmailDelivery;
 using Mailist.EmailRelay.Entities;
+using Mailist.SpamFilter;
 using Mailist.Utilities;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -115,6 +116,21 @@ public class MimeMessageCreationService
         return ErrorMessage(inboxEmail, $"Hallo,\r\n" +
             $"deine E-Mail mit dem Betreff {inboxEmail.Subject} an {inboxEmail.Receiver} konnte nicht zugestellt werden, weil sie zu groß war.\r\n" +
             $"Bitte beachte, dass alle Anhänge zusammen kleiner als {maxAttachmentSizeInMegabytes} MB sein müssen.");
+    }
+
+    public MimeMessage? SpamNotPermitted(InboxEmail inboxEmail)
+    {
+        string reason = inboxEmail.SpamCategory switch
+        {
+            SpamCategory.Irrelevant => "Der Inhalt deiner E-Mail wurde als irrelevant eingestuft und die E-Mail verworfen.",
+            SpamCategory.Dangerous => "Der Inhalt deiner E-Mail wurde als potenziell gefährlich eingestuft und die E-Mail verworfen.",
+            SpamCategory.NoTextContent => "Deine E-Mail enthielt keinen Text, sondern nur Anhänge. Dadurch konnte sie von unserem Spam-Filter nicht überprüft werden.",
+            _ => throw new ArgumentException($"Cannot generate an error message for {nameof(SpamCategory)}.{inboxEmail.SpamCategory}", nameof(inboxEmail))
+        };
+
+        return ErrorMessage(inboxEmail, $"Hallo,\r\n" +
+            $"deine E-Mail mit dem Betreff {inboxEmail.Subject} an {inboxEmail.Receiver} konnte nicht zugestellt werden.\r\n" +
+            reason);
     }
 
     private MimeMessage? ErrorMessage(InboxEmail inboxEmail, string message)

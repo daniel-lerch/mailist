@@ -12,9 +12,21 @@
         </InputGroup>
       </div>
       <Divider />
-      <div class="flex items-center gap-3">
-        <Checkbox v-model="newsletter" inputId="newsletter" binary />
-        <label for="newsletter" v-tooltip="'Absender und Empfängeradressen werden verborgen'">Newsletter</label>
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-3">
+          <Checkbox v-model="overrideRecipient" inputId="overrideRecipient" binary />
+          <label for="overrideRecipient"
+            v-tooltip="'Die E-Mail wird direkt an den Empfänger adressiert und nicht an die Verteileradresse.'">
+            Empfänger überschreiben
+          </label>
+        </div>
+        <div class="flex items-center gap-3">
+          <Checkbox v-model="spamFilter" inputId="spamFilter" binary />
+          <label for="spamFilter"
+            v-tooltip="'Alle E-Mails werden durch ein KI-Modell analysiert. Spam-E-Mails werden abgelehnt und der Absender erhält eine Fehlermeldung.'">
+            Spam-Filter aktivieren ✨
+          </label>
+        </div>
       </div>
       <Divider />
       <div class="mb-2">Empfänger</div>
@@ -93,7 +105,8 @@ const sendersFilter = ref(MailistFilter.parse(initialValue?.sendersQuery ?? null
 const sendersFilterMode = ref(sendersFilter.value.isAdvancedFilter() ? modes[1]! : modes[0]!)
 
 const alias = ref(initialValue?.alias ?? "")
-const newsletter = ref(initialValue?.newsletter ?? false)
+const overrideRecipient = ref(initialValue?.flags.overrideRecipient ?? false)
+const spamFilter = ref(initialValue?.flags.spamFilter ?? false)
 
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -108,14 +121,20 @@ async function save() {
     if (initialValue === undefined) {
       await createDistributionList({
         alias: alias.value,
-        newsletter: newsletter.value,
+        flags: {
+          overrideRecipient: overrideRecipient.value,
+          spamFilter: spamFilter.value,
+        },
         recipientsQuery: recipientsFilter.value.query,
         sendersQuery: sendersFilter.value.query,
       })
     } else {
       await modifyDistributionList(initialValue.id, {
         alias: alias.value,
-        newsletter: newsletter.value,
+        flags: {
+          overrideRecipient: overrideRecipient.value,
+          spamFilter: spamFilter.value,
+        },
         recipientsQuery: recipientsFilter.value.query,
         sendersQuery: sendersFilter.value.query,
       })

@@ -1,0 +1,83 @@
+X-Envelope-From: <SRS0=vbzL=BO=fegsj.de=c***@feg.de>
+X-Envelope-To: <kontakt@christuskirche.com>
+X-Delivery-Time: 1773478640
+X-UID: 28018
+Return-Path: <SRS0=vbzL=BO=fegsj.de=c***@feg.de>
+ARC-Seal: i=1; a=rsa-sha256; t=1773478639; cv=none;
+    d=strato.com; s=strato-dkim-0002;
+    b=hV8PBdAwCquTdRvn8PKuTZVh7xgOVDpIMcFMLdA7LC+R4nO1ScGntmIPRl+xaZbEBm
+    ttWxv9B9Z8SR4f5t8UW8SxhlkMb9J8CBlPNAKxJA4MOM2Uj+mHyoA2FEw19WpRJ7W+eO
+    tu1T/mZ81LSmf5HB5IJQBGngGOyak5Hb2ucoVQhk2BGdHSns5sxlNOTcuix8OZeNdNRO
+    UsHADjuqr+dYoZTkgxIr2v6o/+2bZSQX5LLKtyp8OG2bV3LwIEYMPaiL/8loIHTy8iMn
+    9yEvbd5eUfU7ZZ83sQ5KxI9Qf+4FpEFvE+xy01TZfSIoWFBr+NRAcTFParkat3pgrdeu
+    Di/g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1773478639;
+    s=strato-dkim-0002; d=strato.com;
+    h=To:Message-Id:Subject:Date:From:Cc:Date:From:Subject:Sender;
+    bh=6/qNtuxgdQL+6EK9DjJiyCQxTlLCa5s31bmhaQOxCnM=;
+    b=M+c8lu7TjmCuFlLnEK+sorK8Sz4kBW8gtYZv9xwpX57tizOT1td817Psn2dkWHyt69
+    Nd7jFbcjYm0qkW5yyp3vVbwj5tx2vb/wrlQvcbuKQzjbnoLrlHrqPWOA2qPLyKlwKIZp
+    yS1Aj4edgsUDbFds5//ZlVQoAIbE+cLvgeot1W7YNJsnDp9nZXFZSEuUhXFrzgJ6nG/0
+    WbnVb5NZ5YLRO46VjZ4gXj/Ftlmted6nGiX/+jSZdHC9LLlkhlRnZXKbCFgMkFZleCwl
+    +K0jaAzgwnFA6/tNDWLHnCs1Po/e6EcXUXOon+zbLW+Zgb6lHd3ArHpD3VIeC6FnA0cO
+    747Q==
+ARC-Authentication-Results: i=1; strato.com;
+    dmarc=pass (p=NONE sp=NONE) header.from="fegsj.de";
+    arc=none smtp.remote-ip=178.250.226.67;
+    dkim=pass header.d="fegsj.de" header.s="default" header.a="rsa-sha256";
+    dkim-adsp=pass;
+    spf=pass smtp.mailfrom="SRS0=vbzL=BO=fegsj.de=c***@feg.de"
+Authentication-Results: strato.com;
+    dmarc=pass (p=NONE sp=NONE) header.from="fegsj.de";
+    arc=none smtp.remote-ip=178.250.226.67;
+    dkim=pass header.d="fegsj.de" header.s="default" header.a="rsa-sha256";
+    dkim-adsp=pass;
+    spf=pass smtp.mailfrom="SRS0=vbzL=BO=fegsj.de=c***@feg.de"
+X-RZG-Expurgate: clean/normal
+X-RZG-Expurgate-ID: 149500::1773478639-CC3D4B74-0CCCB48F/0/0
+X-GEM-Spam-Flag: NO
+X-RZG-CLASS-ID: mi00
+Received-SPF: pass
+    (strato.com: domain feg.de designates 178.250.226.67 as permitted sender)
+    mechanism=ip4;
+    client-ip=178.250.226.67;
+    helo="mail.feg.de";
+    envelope-from="SRS0=vbzL=BO=fegsj.de=c***@feg.de";
+    receiver=smtpin.rzone.de;
+    identity=mailfrom;
+Received: from mail.feg.de ([178.250.226.67])
+    by smtpin.rzone.de (RZmta 55.0.1 OK)
+    with ESMTPS id i73ac122E8vIU7d
+    (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+    (Client did not present a certificate)
+    for <kontakt@christuskirche.com>;
+    Sat, 14 Mar 2026 09:57:18 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+        by mail.feg.de (Postfix) with ESMTP id 8660C12172B;
+        Sat, 14 Mar 2026 09:57:18 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fegsj.de; h=
+        x-mailer:message-id:subject:subject:date:date:mime-version
+        :content-type:content-type:from:from; s=default; t=1773478638;
+         x=1775293039; bh=mrpsPG8NybqIcLsXvOHHU4PVJ4rdKJXywUW0intfztU=; b=
+        W/Fh7kwHMplkfUO3pQp95pwuWiZMl6X/7spdaZd324wdqGw+BRPmv87lcMxoPJ7a
+        fXx5e1OLlhnjzH3fDwS7kneIoKOF36nsC97vwMb5odUTdhr/4E+fLKDc9S8lJN6t
+        227eYbvCqsTC4jFLgF+wmxftll+zBR/m0JXYo3/jFW4=
+Received: from mail.feg.de ([127.0.0.1])
+        by localhost (localhost [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id x_sRURhVuKtS; Sat, 14 Mar 2026 09:57:18 +0100 (CET)
+Received: from smtpclient.apple (d068-046.dialin.ggew-net.de [178.132.68.46])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        (Authenticated sender: c***@fegsj.de)
+        by mail.feg.de (Postfix) with ESMTPSA id D4C8A1214B1;
+        Sat, 14 Mar 2026 09:57:17 +0100 (CET)
+From: Christine <c***@fegsj.de>
+Content-Type: multipart/alternative;
+        boundary="Apple-Mail=_3AE67BD6-8981-4520-9299-AA0C712E89BA"
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.400.21\))
+Date: Sat, 14 Mar 2026 09:57:07 +0100
+Subject: Herzliche Einladung zu einem Osterweg in der FeG Jugenheim
+Message-Id: <FC0D6A89-F420-4795-819E-DB412BD4B8A6@fegsj.de>
+To: Christine <c***@t-online.de>
+X-Mailer: Apple Mail (2.3864.400.21)
+

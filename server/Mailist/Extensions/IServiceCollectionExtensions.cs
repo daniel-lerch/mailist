@@ -2,6 +2,7 @@
 using Mailist.Configuration;
 using Mailist.EmailDelivery;
 using Mailist.EmailRelay;
+using Mailist.SpamFilter;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,14 @@ public static class IServiceCollectionExtensions
             });
         services.AddOptions<EmailRelayOptions>()
             .Bind(configuration.GetSection("EmailRelay"))
+            .Validate(options =>
+            {
+                if (!options.Enable) return true;
+                ValidationContext context = new(options);
+                return Validator.TryValidateObject(options, context, null);
+            });
+        services.AddOptions<SpamFilterOptions>()
+            .Bind(configuration.GetSection("SpamFilter"))
             .Validate(options =>
             {
                 if (!options.Enable) return true;

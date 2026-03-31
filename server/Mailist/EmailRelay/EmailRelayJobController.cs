@@ -1,8 +1,11 @@
 ﻿using Mailist.EmailDelivery;
 using Mailist.EmailRelay.Entities;
+using Mailist.SpamFilter;
 using Mailist.Utilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MimeKit;
 using System;
 using System.Linq;
@@ -17,15 +20,26 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
     private readonly ILogger<EmailRelayJobController> logger;
     private readonly DistributionListService distributionListService;
     private readonly MimeMessageCreationService mimeMessageService;
+    private readonly IOptions<SpamFilterOptions> spamFilterOptions;
     private readonly EmailDeliveryService emailDelivery;
+    private readonly IServiceProvider serviceProvider;
 
-    public EmailRelayJobController(DatabaseContext database, ILogger<EmailRelayJobController> logger, DistributionListService distributionListService, MimeMessageCreationService emailRelay, EmailDeliveryService emailDelivery)
+    public EmailRelayJobController(
+        DatabaseContext database,
+        ILogger<EmailRelayJobController> logger,
+        DistributionListService distributionListService,
+        MimeMessageCreationService emailRelay,
+        IOptions<SpamFilterOptions> spamFilterOptions,
+        EmailDeliveryService emailDelivery,
+        IServiceProvider serviceProvider)
     {
         this.database = database;
         this.logger = logger;
         this.distributionListService = distributionListService;
         this.mimeMessageService = emailRelay;
+        this.spamFilterOptions = spamFilterOptions;
         this.emailDelivery = emailDelivery;
+        this.serviceProvider = serviceProvider;
     }
 
     protected override async ValueTask<InboxEmail?> NextPendingOrDefault(CancellationToken cancellationToken)
@@ -100,10 +114,27 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
             return;
         }
 
+        if (spamFilterOptions.Value.Enable && distributionList.Flags.HasFlag(DistributionListFlags.SpamFilter))
+        {
+            SpamFilterService spamFilterService = serviceProvider.GetRequiredService<SpamFilterService>();
+            var classification = await spamFilterService.ClassifyMessage(email, cancellationToken);
+            email.SpamCategory = classification.Category;
+            email.SpamJustification = classification.Justification;
+
+            if (classification.Category is SpamCategory.NoTextContent or SpamCategory.Irrelevant or SpamCategory.Dangerous)
+            {
+                using MimeMessage? errorMessage = mimeMessageService.SpamNotPermitted(email);
+                await RejectEmail(email, errorMessage, cancellationToken);
+                return;
+            }
+
+            // SpamCategory.Legitimate and SpamCategory.ClassificationFailed are treated as non-spam and will be forwarded.
+        }
+
         MailboxAddress[] recipients = await distributionListService.GetRecipients(distributionList, cancellationToken);
         foreach (MailboxAddress address in recipients)
         {
-            using MimeMessage preparedMessage = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter)
+            using MimeMessage preparedMessage = distributionList.Flags.HasFlag(DistributionListFlags.OverrideRecipient)
                 ? await mimeMessageService.PrepareForForwardTo(email, address, cancellationToken)
                 : mimeMessageService.PrepareForResentTo(email, address);
             await emailDelivery.Enqueue(address.Address, preparedMessage, email.Id, cancellationToken);

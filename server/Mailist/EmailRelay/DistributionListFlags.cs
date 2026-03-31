@@ -6,5 +6,6 @@ namespace Mailist.EmailRelay;
 public enum DistributionListFlags
 {
     None = 0,
-    Newsletter = 1,
+    OverrideRecipient = 1,
+    SpamFilter = 2,
 }

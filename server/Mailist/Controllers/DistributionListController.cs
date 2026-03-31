@@ -1,5 +1,4 @@
-﻿using Mailist.EmailRelay;
-using Mailist.Models.Json;
+﻿using Mailist.Models.Json;
 using Mailist.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -66,7 +65,7 @@ public class DistributionListController : ControllerBase
         {
             Id = dl.Id,
             Alias = dl.Alias,
-            Newsletter = dl.Flags.HasFlag(DistributionListFlags.Newsletter),
+            Flags = new(dl.Flags),
             RecipientsQuery = recipientsQuery,
             SendersQuery = sendersQuery,
             RecipientCount = await recipientCount,
@@ -102,7 +101,7 @@ public class DistributionListController : ControllerBase
             request.RecipientsQuery.GetRawText(),
             request.SendersQuery.GetRawText())
         {
-            Flags = request.Newsletter ? DistributionListFlags.Newsletter : DistributionListFlags.None,
+            Flags = request.Flags,
         };
 
         database.DistributionLists.Add(distributionList);
@@ -112,7 +111,7 @@ public class DistributionListController : ControllerBase
         {
             Id = distributionList.Id,
             Alias = distributionList.Alias,
-            Newsletter = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter),
+            Flags = new(distributionList.Flags),
             RecipientsQuery = JsonElement.Parse(distributionList.RecipientsQuery),
             RecipientCount = recipientCount,
             SendersQuery = JsonElement.Parse(distributionList.SendersQuery),
@@ -137,7 +136,7 @@ public class DistributionListController : ControllerBase
             return NotFound();
 
         distributionList.Alias = request.Alias;
-        distributionList.Flags = request.Newsletter ? DistributionListFlags.Newsletter : DistributionListFlags.None;
+        distributionList.Flags = request.Flags;
         distributionList.RecipientsQuery = request.RecipientsQuery.GetRawText();
         distributionList.SendersQuery = request.SendersQuery.GetRawText();
 
@@ -162,7 +161,7 @@ public class DistributionListController : ControllerBase
         {
             Id = distributionList.Id,
             Alias = distributionList.Alias,
-            Newsletter = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter),
+            Flags = new(distributionList.Flags),
             RecipientsQuery = JsonElement.Parse(distributionList.RecipientsQuery),
             RecipientCount = recipientCount,
             SendersQuery = JsonElement.Parse(distributionList.SendersQuery),

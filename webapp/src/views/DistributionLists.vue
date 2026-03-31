@@ -12,6 +12,12 @@
     </div>
     <DataTable :value="distributionLists" removableSort>
       <Column field="alias" header="Alias" sortable />
+      <Column>
+        <template #body="slotProps">
+          <i v-if="slotProps.data.flags.overrideRecipient" class="pi pi-forward"></i>
+          <i v-if="slotProps.data.flags.spamFilter" class="pi pi-filter"></i>
+        </template>
+      </Column>
       <Column field="recipientCount" header="Anzahl Empfänger" sortable />
       <Column field="recipientsQuery" header="Empfänger">
         <template #body="slotProps">

@@ -1,0 +1,84 @@
+X-Envelope-From: <bounce-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu>
+X-Envelope-To: <kontakt@christuskirche.com>
+X-Delivery-Time: 1774602528
+X-UID: 28078
+Return-Path: <bounce-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu>
+ARC-Seal: i=1; a=rsa-sha256; t=1774602527; cv=none;
+    d=strato.com; s=strato-dkim-0002;
+    b=F2FryOWryg7jy5DKDWORUbjiAehrFHCtcho3eRmxMpI5O6eEpy4vKX787N/vH/6oEi
+    gJnTkHDfyUQA7yafi9NVDlz6NpwMpQ1sBhF22jsFIYFs+q0MxRXzHW5frZ3Po+FYvLhf
+    jat4LwhK9cRbBSD8fY97zRADw/la53agr2iQ3ruMZsHCFwJjkrHsksrIN2N2ULFGR59m
+    1wRyForbwRsV67VNFuEFxVMAy2X25GrTa9B3Zekhtw3NkjlPDglp+E1KGAwGubI9r/HW
+    pr8V4ZWr2/McyvZc+cVUCEsH8MSxvO/gp50ogtF8gyjed0EcBs3e7zFdwqnFYtlIk0bJ
+    2+FA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1774602527;
+    s=strato-dkim-0002; d=strato.com;
+    h=List-Unsubscribe:Subject:Message-Id:To:Reply-To:From:Date:
+    List-Unsubscribe-Post:Cc:Date:From:Subject:Sender;
+    bh=AfzFkW9cR+DPo6h4TnqNw9yY5JyFfZgo/4Qt8qqv2P8=;
+    b=tK8LEyFXxK9Vc4rVRfJsrKIWleiOIqpSit1WoRlcaZNzYmZyDMDh7prO+EIhDwec+y
+    YrJTrOCFg2YanUn/sRTgGkIXWMYpM6Y0VrZwIvKI1R7rxSCksvapNRfcJokSvc3aE18P
+    KPzR3sjUEME00gvGHWoj8xeZ2S3rHCyYS8sxqywObgV16UP+mLQAKtfDhJEnp95cuX0F
+    JUmMnm/LIuasXSxlzWmMBbLFoQrlAyCRxeAbonJPwRO+kGHYuExcxEOvfY3f1v/7BMzi
+    6OmQxH55aC26cGKsRucvg2iHondVW6eHAiRRqzYAYzXyR8ktdraEQNtO7wI+NavNh/OT
+    O7og==
+ARC-Authentication-Results: i=1; strato.com;
+    dmarc=pass (p=QUARANTINE sp=NONE) header.from="news.premium-box.eu";
+    arc=none smtp.remote-ip=185.154.150.108;
+    dkim=pass header.d="news.premium-box.eu" header.s="xq" header.a="rsa-sha256" header.i="susanne.kern@news.premium-box.eu";
+    dkim-adsp=pass;
+    spf=pass smtp.mailfrom="bounce-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu"
+Authentication-Results: strato.com;
+    dmarc=pass (p=QUARANTINE sp=NONE) header.from="news.premium-box.eu";
+    arc=none smtp.remote-ip=185.154.150.108;
+    dkim=pass header.d="news.premium-box.eu" header.s="xq" header.a="rsa-sha256" header.i="susanne.kern@news.premium-box.eu";
+    dkim-adsp=pass;
+    spf=pass smtp.mailfrom="bounce-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu"
+X-RZG-Expurgate: bulk/normal
+X-RZG-Expurgate-ID: 149500::1774602526-CCD61B74-0A1DE0C3/3/8692345801
+X-GEM-Spam-Flag: NO
+X-RZG-CLASS-ID: mi07
+Received-SPF: pass
+    (strato.com: domain news.premium-box.eu designates 185.154.150.108 as permitted sender)
+    mechanism=ip4;
+    client-ip=185.154.150.108;
+    helo="mx150-108.xqueue.com";
+    envelope-from="bounce-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu";
+    receiver=smtpin.rzone.de;
+    identity=mailfrom;
+Received: from mx150-108.xqueue.com ([185.154.150.108])
+    by smtpin.rzone.de (RZmta 55.0.1 OK)
+    with ESMTPS id Aeb14b22R98DnAq
+    (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+    (Client did not present a certificate)
+    for <kontakt@christuskirche.com>;
+    Fri, 27 Mar 2026 10:08:13 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; s=xq; d=news.premium-box.eu;
+ h=X-CSA-Complaints:List-Unsubscribe-Post:Date:From:Reply-To:To:Message-Id:
+ Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:List-Unsubscribe;
+ i=susanne.kern@news.premium-box.eu;
+ bh=AfzFkW9cR+DPo6h4TnqNw9yY5JyFfZgo/4Qt8qqv2P8=;
+ b=sSmvFlo0TkCKZUdS980fubxoTfuNJ0Tfyg+9NKsxBlAFYM3n+EXWlhide1HirC+tR96T9kf+KhGg
+   EdPicYN9uVS3J769WejLnZorixFXHqAbWAPh2C6NTMypP2WAeNcyXBJ9/EP2zSeiOoHd1D22Kkz5
+   AamK1ftV5lm9TsRgW70=
+Received: by mx150-108.xqueue.com id hop4f63c3rsm for <kontakt@christuskirche.com>; Fri, 27 Mar 2026 08:32:33 +0100 (envelope-from <bounce-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu>)
+X-Report-Abuse: Please report spam/abuse here: complaints@xqueue.com
+X-CSA-Complaints: csa-complaints@eco.de
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Date: Fri, 27 Mar 2026 08:32:28 +0100 (CET)
+From: Premium Box <susanne.kern@news.premium-box.eu>
+Reply-To: info@premiumboxx.de
+To: kontakt@christuskirche.com
+Message-Id: <3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu>
+Subject: =?UTF-8?Q?Massagesessel_als_luxuri=C3=B6ser_Leder-Chefses?=
+ =?UTF-8?Q?sel_mit_Liegefunktion_=E2=80=93_f=C3=BCr_Ihre_Gesundheit?=
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+List-Unsubscribe: <https://news.premium-box.eu/i/unsubscribe/3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly>,
+ <mailto:unsubscribe-3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly@news.premium-box.eu?subject=unsubscribe>
+X-Mailer: Maileon
+X-Maileon-FingerPrint: 3iktventjz2d2sr5v7i4pn4u6gpclhul4gdbyly
+X-Campaign: M.68893|59
+Feedback-ID: Typeregular:MailingID59:Sender68893
+
