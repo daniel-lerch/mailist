@@ -108,7 +108,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         var request = new CreateDistributionList
         {
             Alias = alias,
-            Newsletter = true,
+            Flags = new(DistributionListFlags.OverrideRecipient),
             RecipientsQuery = JsonElement.Parse(recipientsQuery),
             SendersQuery = JsonElement.Parse(sendersQuery),
         };
@@ -119,7 +119,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         var created = await response.Content.ReadFromJsonAsync<DistributionList>(cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotNull(created);
         Assert.Equal(alias, created!.Alias);
-        Assert.True(created.Newsletter);
+        Assert.True(created.Flags.OverrideRecipient);
         Assert.Equal(recipientsQuery, created.RecipientsQuery.GetRawText());
         Assert.Equal(sendersQuery, created.SendersQuery.GetRawText());
         Assert.Equal(0, created.RecipientCount);
@@ -129,7 +129,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
         var stored = await db.DistributionLists.SingleAsync(dl => dl.Id == created.Id, TestContext.Current.CancellationToken);
         Assert.Equal(alias, stored.Alias);
-        Assert.Equal(DistributionListFlags.Newsletter, stored.Flags);
+        Assert.Equal(DistributionListFlags.OverrideRecipient, stored.Flags);
         Assert.Equal(recipientsQuery, stored.RecipientsQuery);
         Assert.Equal(sendersQuery, stored.SendersQuery);
     }
@@ -153,7 +153,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         var updateRequest = new CreateDistributionList
         {
             Alias = alias,
-            Newsletter = true,
+            Flags = new(DistributionListFlags.OverrideRecipient),
             RecipientsQuery = JsonElement.Parse(updatedRecipientsQuery),
             SendersQuery = JsonElement.Parse(updatedSendersQuery),
         };
@@ -165,7 +165,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         Assert.NotNull(updated);
         Assert.Equal(id, updated!.Id);
         Assert.Equal(alias, updated.Alias);
-        Assert.True(updated.Newsletter);
+        Assert.True(updated.Flags.OverrideRecipient);
         Assert.Equal(updatedRecipientsQuery, updated.RecipientsQuery.GetRawText());
         Assert.Equal(updatedSendersQuery, updated.SendersQuery.GetRawText());
 
@@ -173,7 +173,7 @@ public class DistributionListIntegrationTests : IClassFixture<MockChurchToolsApp
         var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
         var stored = await db.DistributionLists.SingleAsync(dl => dl.Id == id, TestContext.Current.CancellationToken);
         Assert.Equal(alias, stored.Alias);
-        Assert.Equal(DistributionListFlags.Newsletter, stored.Flags);
+        Assert.Equal(DistributionListFlags.OverrideRecipient, stored.Flags);
         Assert.Equal(updatedRecipientsQuery, stored.RecipientsQuery);
         Assert.Equal(updatedSendersQuery, stored.SendersQuery);
     }

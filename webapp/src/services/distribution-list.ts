@@ -2,7 +2,10 @@ import { useExtensionStore } from "@/stores/extension"
 
 export type CreateDistributionList = {
   alias: string
-  newsletter: boolean
+  flags: {
+    overrideRecipient: boolean
+    spamFilter: boolean
+  }
   recipientsQuery: unknown | null
   sendersQuery: unknown | null
 }

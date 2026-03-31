@@ -103,7 +103,7 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         MailboxAddress[] recipients = await distributionListService.GetRecipients(distributionList, cancellationToken);
         foreach (MailboxAddress address in recipients)
         {
-            using MimeMessage preparedMessage = distributionList.Flags.HasFlag(DistributionListFlags.Newsletter)
+            using MimeMessage preparedMessage = distributionList.Flags.HasFlag(DistributionListFlags.OverrideRecipient)
                 ? await mimeMessageService.PrepareForForwardTo(email, address, cancellationToken)
                 : mimeMessageService.PrepareForResentTo(email, address);
             await emailDelivery.Enqueue(address.Address, preparedMessage, email.Id, cancellationToken);
