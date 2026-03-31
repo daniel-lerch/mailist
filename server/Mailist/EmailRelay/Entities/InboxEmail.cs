@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mailist.SpamFilter;
+using System;
 
 namespace Mailist.EmailRelay.Entities;
 
@@ -44,6 +45,8 @@ public class InboxEmail
     /// If the body exceeded a certain size limit, this value is <see langword="null"/>.
     /// </summary>
     public byte[]? Body { get; set; }
+    public SpamCategory SpamCategory { get; set; }
+    public string? SpamJustification { get; set; }
     public DateTime DownloadTime { get; set; }
     public DateTime ProcessingCompletedTime { get; set; }
 }

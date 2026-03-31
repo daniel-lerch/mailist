@@ -39,11 +39,12 @@ public sealed class DatabaseContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
         inboxEmail.HasIndex(e => e.UniqueId).IsUnique();
         inboxEmail.HasIndex(e => e.ProcessingCompletedTime);
+        inboxEmail.Property(e => e.SpamCategory).HasConversion<int>();
         inboxEmail.Property(e => e.DownloadTime).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
         var distributionList = modelBuilder.Entity<DistributionList>();
         distributionList.HasKey(dl => dl.Id);
-        distributionList.HasAlternateKey(dl => dl.Alias);
+        distributionList.HasIndex(dl => dl.Alias).IsUnique();
         distributionList.Property(dl => dl.Flags).HasConversion<int>();
     }
 

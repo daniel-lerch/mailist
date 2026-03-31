@@ -1,5 +1,6 @@
 ﻿using Mailist.EmailDelivery;
 using Mailist.EmailRelay.Entities;
+using Mailist.SpamFilter;
 using Mailist.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,14 +18,22 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
     private readonly ILogger<EmailRelayJobController> logger;
     private readonly DistributionListService distributionListService;
     private readonly MimeMessageCreationService mimeMessageService;
+    private readonly SpamFilterService spamFilterService;
     private readonly EmailDeliveryService emailDelivery;
 
-    public EmailRelayJobController(DatabaseContext database, ILogger<EmailRelayJobController> logger, DistributionListService distributionListService, MimeMessageCreationService emailRelay, EmailDeliveryService emailDelivery)
+    public EmailRelayJobController(
+        DatabaseContext database,
+        ILogger<EmailRelayJobController> logger,
+        DistributionListService distributionListService,
+        MimeMessageCreationService emailRelay,
+        SpamFilterService spamFilterService,
+        EmailDeliveryService emailDelivery)
     {
         this.database = database;
         this.logger = logger;
         this.distributionListService = distributionListService;
         this.mimeMessageService = emailRelay;
+        this.spamFilterService = spamFilterService;
         this.emailDelivery = emailDelivery;
     }
 
@@ -98,6 +107,22 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
 
             logger.LogInformation("Email #{Id} from {From} to {Receiver} exceeded the body size limit", email.Id, email.From, email.Receiver);
             return;
+        }
+
+        if (distributionList.Flags.HasFlag(DistributionListFlags.SpamFilter))
+        {
+            var classification = await spamFilterService.ClassifyMessage(email, cancellationToken);
+            email.SpamCategory = classification.Category;
+            email.SpamJustification = classification.Justification;
+
+            if (classification.Category is SpamCategory.NoTextContent or SpamCategory.Irrelevant or SpamCategory.Dangerous)
+            {
+                using MimeMessage? errorMessage = mimeMessageService.SpamNotPermitted(email);
+                await RejectEmail(email, errorMessage, cancellationToken);
+                return;
+            }
+
+            // SpamCategory.Legitimate and SpamCategory.ClassificationFailed are treated as non-spam and will be forwarded.
         }
 
         MailboxAddress[] recipients = await distributionListService.GetRecipients(distributionList, cancellationToken);
