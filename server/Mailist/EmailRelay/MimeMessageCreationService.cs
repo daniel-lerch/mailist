@@ -29,53 +29,46 @@ public class MimeMessageCreationService
     }
 
     /// <summary>
-    /// Prepends Resent headers to the original email in order to reintroduce it into the mail transport system.
+    /// Rewrites the original From header as Reply-To to forward a message in a DMARC compliant way.
     /// </summary>
     /// <param name="inboxEmail">The original email received via IMAP</param>
-    /// <param name="address">The recipient to deliver the original email to</param>
     /// <returns>A complete MIME message which is ready to send</returns>
     /// <remarks>
     /// Forwarding emails by simply adding a Sender header fails DMARC policy checks because there is no valid DKIM signature of the original sender anymore.<br/>
-    /// To avoid this problem to we resent the entire MIME message: https://www.ietf.org/rfc/rfc2822.txt (Section 3.6.6)
+    /// To avoid this problem to we resent entire MIME messages: https://www.ietf.org/rfc/rfc2822.txt (Section 3.6.6)<br/>
+    /// For strict DMARC policies even this is not enough, because SPF and DKIM checks must pass on the From address.
     /// </remarks>
-    public MimeMessage PrepareForResentTo(InboxEmail inboxEmail, MailboxAddress address)
+    public async ValueTask<MimeMessage> PrepareForward(InboxEmail inboxEmail, CancellationToken cancellationToken)
     {
         if (inboxEmail.Header == null) throw new ArgumentNullException(nameof(inboxEmail), "inboxEmail.Header must not be null");
         if (inboxEmail.Body == null) throw new ArgumentNullException(nameof(inboxEmail), "inboxEmail.Body must not be null");
 
         HeaderList headers;
         using (MemoryStream memoryStream = new(inboxEmail.Header))
-            headers = HeaderList.Load(memoryStream);
+            headers = HeaderList.Load(memoryStream, cancellationToken);
 
         MimeEntity body;
         using (MemoryStream memoryStream = new(inboxEmail.Body))
-            body = MimeEntity.Load(memoryStream);
-
-        headers.Insert(0, HeaderId.ResentFrom, new MailboxAddress(deliveryOptions.Value.SenderName, deliveryOptions.Value.SenderAddress).ToString());
-        headers.Insert(1, HeaderId.ResentTo, address.ToString());
-
-        return new MimeMessage(headers, body);
-    }
-
-    public async ValueTask<MimeMessage> PrepareForForwardTo(InboxEmail inboxEmail, MailboxAddress address, CancellationToken cancellationToken)
-    {
-        if (inboxEmail.Body == null) throw new ArgumentNullException(nameof(inboxEmail), "inboxEmail.Body must not be null");
-
-        MimeEntity body;
-        using (MemoryStream memoryStream = new(inboxEmail.Body))
-            // Reading from a MemoryStream is a synchronous operation that won't be cancelled anyhow
-            body = MimeEntity.Load(memoryStream, CancellationToken.None);
+            body = MimeEntity.Load(memoryStream, cancellationToken);
 
         MailboxAddress? from = InternetAddressHelper.FirstMailboxAddressOrDefault(inboxEmail.From);
         string? fromName = await FromName(from, cancellationToken);
 
+        if (!MailboxAddress.TryParse(inboxEmail.ReplyTo, out MailboxAddress? replyTo))
+            replyTo = from;
+
         MimeMessage message = new();
-        message.From.Add(new MailboxAddress(fromName, deliveryOptions.Value.SenderAddress));
-        message.To.Add(address);
-        if (from != null)
-            message.ReplyTo.Add(from);
+        if (headers[HeaderId.Date] is { } date)
+            message.Headers.Add(HeaderId.Date, date);
         if (inboxEmail.Subject != null)
             message.Subject = inboxEmail.Subject;
+        message.From.Add(new MailboxAddress(fromName, deliveryOptions.Value.SenderAddress));
+        if (inboxEmail.To != null)
+            message.To.AddRange(InternetAddressList.Parse(inboxEmail.To));
+        if (headers[HeaderId.Cc] is { } cc)
+            message.Cc.AddRange(InternetAddressList.Parse(cc));
+        if (replyTo != null)
+            message.ReplyTo.Add(replyTo);
         message.Body = body;
         return message;
     }
