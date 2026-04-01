@@ -35,8 +35,8 @@ public class MimeMessageCreationService
     /// <returns>A complete MIME message which is ready to send</returns>
     /// <remarks>
     /// Forwarding emails by simply adding a Sender header fails DMARC policy checks because there is no valid DKIM signature of the original sender anymore.<br/>
-    /// To avoid this problem to we resent entire MIME messages: https://www.ietf.org/rfc/rfc2822.txt (Section 3.6.6)<br/>
-    /// For strict DMARC policies even this is not enough, because SPF and DKIM checks must pass on the From address.
+    /// To avoid this problem we tried to resent entire MIME messages: https://www.ietf.org/rfc/rfc2822.txt (Section 3.6.6)<br/>
+    /// For strict DMARC policies even this was not enough, because SPF and DKIM checks must pass on the From address.
     /// </remarks>
     public async ValueTask<MimeMessage> PrepareForward(InboxEmail inboxEmail, CancellationToken cancellationToken)
     {
@@ -54,8 +54,8 @@ public class MimeMessageCreationService
         MailboxAddress? from = InternetAddressHelper.FirstMailboxAddressOrDefault(inboxEmail.From);
         string? fromName = await FromName(from, cancellationToken);
 
-        if (!MailboxAddress.TryParse(inboxEmail.ReplyTo, out MailboxAddress? replyTo))
-            replyTo = from;
+        if (!InternetAddressList.TryParse(inboxEmail.ReplyTo, out InternetAddressList? replyTo))
+            _ = InternetAddressList.TryParse(inboxEmail.From, out replyTo);
 
         MimeMessage message = new();
         if (headers[HeaderId.Date] is { } date)
@@ -68,7 +68,7 @@ public class MimeMessageCreationService
         if (headers[HeaderId.Cc] is { } cc)
             message.Cc.AddRange(InternetAddressList.Parse(cc));
         if (replyTo != null)
-            message.ReplyTo.Add(replyTo);
+            message.ReplyTo.AddRange(replyTo);
         message.Body = body;
         return message;
     }
