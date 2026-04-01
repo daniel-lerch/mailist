@@ -29,6 +29,14 @@ public class MimeMessageCreationServiceTests
 
         var emailRelay = ActivatorUtilities.CreateInstance<MimeMessageCreationService>(serviceProvider);
 
+        byte[] header;
+        using (MemoryStream headerStream = new())
+        {
+            var headerList = new HeaderList();
+            await headerList.WriteToAsync(headerStream, TestContext.Current.CancellationToken);
+            header = headerStream.ToArray();
+        }
+
         byte[] body;
         using (MemoryStream bodyStream = new())
         {
@@ -48,11 +56,10 @@ public class MimeMessageCreationServiceTests
             replyTo: null,
             to: "test@example.org",
             receiver: "test@example.org",
-            header: null,
+            header: header,
             body: body);
 
-        var recipient = MailboxAddress.Parse("max.mustermann@example.com");
-        var mimeMessage = await emailRelay.PrepareForForwardTo(inboxEmail, recipient, TestContext.Current.CancellationToken);
+        var mimeMessage = await emailRelay.PrepareForward(inboxEmail, TestContext.Current.CancellationToken);
         if (mimeMessage.From[0] is MailboxAddress from)
         {
             Assert.Equal("Armin Adendorf", from.Name);

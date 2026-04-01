@@ -38,12 +38,15 @@ public class EmailDeliveryJobController : OneAtATimeJobController<OutboxEmail>, 
     {
         SmtpClient smtp = await GetConnection(cancellationToken);
 
+        MailboxAddress sender = new(name: null, options.Value.SenderAddress);
+        MailboxAddress recipient = new(name: null, outboxEmail.EmailAddress);
+
         using MemoryStream memoryStream = new(outboxEmail.Content);
         using MimeMessage mimeMessage = MimeMessage.Load(memoryStream, CancellationToken.None);
 
         try
         {
-            await smtp.SendAsync(mimeMessage, cancellationToken);
+            await smtp.SendAsync(mimeMessage, sender, [recipient], cancellationToken);
 
             database.OutboxEmails.Remove(outboxEmail);
             database.SentEmails.Add(new SentEmail
