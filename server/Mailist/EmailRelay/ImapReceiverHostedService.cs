@@ -4,63 +4,84 @@ using Mailist.Utilities;
 using MailKit;
 using MailKit.Net.Imap;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Mailist.EmailRelay;
 
-public class ImapReceiverService
+public class ImapReceiverHostedService : BackgroundService
 {
-    private const int FetchBatchSize = 100;
-
-    private readonly ILogger<ImapReceiverService> logger;
+    private readonly ILogger<ImapReceiverHostedService> logger;
     private readonly IOptions<EmailRelayOptions> options;
-    private readonly DatabaseContext database;
     private readonly JobQueue<EmailRelayJobController> jobQueue;
+    private readonly IServiceProvider serviceProvider;
 
-    public ImapReceiverService(ILogger<ImapReceiverService> logger, IOptions<EmailRelayOptions> options, DatabaseContext database, JobQueue<EmailRelayJobController> jobQueue)
+    public ImapReceiverHostedService(ILogger<ImapReceiverHostedService> logger, IOptions<EmailRelayOptions> options, JobQueue<EmailRelayJobController> jobQueue, IServiceProvider serviceProvider)
     {
         this.logger = logger;
         this.options = options;
-        this.database = database;
         this.jobQueue = jobQueue;
+        this.serviceProvider = serviceProvider;
     }
 
-    public async ValueTask FetchAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using ImapClient imap = new();
-        await imap.ConnectAsync(options.Value.ImapHost, options.Value.ImapPort, options.Value.ImapUseSsl, stoppingToken);
-        await imap.AuthenticateAsync(options.Value.ImapUsername, options.Value.ImapPassword, stoppingToken);
-        await imap.Inbox.OpenAsync(FolderAccess.ReadWrite, stoppingToken);
-        logger.LogDebug("Opened IMAP inbox with {MessageCount} messages", imap.Inbox.Count);
+        await Connect(imap, stoppingToken);
 
         MessageSummaryItems fetchItems =
             MessageSummaryItems.UniqueId | MessageSummaryItems.Flags | MessageSummaryItems.Headers | MessageSummaryItems.Body;
 
-        int messageCount = imap.Inbox.Count;
-
-        for (int min = 0; min < messageCount; min += FetchBatchSize)
+        while (true)
         {
-            int max = Math.Min(min + FetchBatchSize - 1, messageCount - 1);
-            IList<IMessageSummary> messages = await imap.Inbox.FetchAsync(min, max, fetchItems, stoppingToken);
-
-            foreach (IMessageSummary message in messages)
+            try
             {
-                await ProcessMessage(message, stoppingToken);
+                await foreach (IMessageSummary message in imap.IdleFetchAsync(imap.Inbox, fetchItems, stoppingToken))
+                {
+                    await ProcessMessage(message, stoppingToken);
+                }
+            }
+            catch (ImapProtocolException)
+            {
+                await Connect(imap, stoppingToken);
+            }
+            catch (IOException)
+            {
+                await Connect(imap, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
         }
+    }
 
-        await imap.Inbox.ExpungeAsync(stoppingToken);
-        await imap.DisconnectAsync(quit: true, stoppingToken);
+    private async Task Connect(ImapClient imap, CancellationToken cancellationToken)
+    {
+        if (!imap.IsConnected)
+        {
+            await imap.ConnectAsync(options.Value.ImapHost, options.Value.ImapPort, options.Value.ImapUseSsl, cancellationToken);
+        }
+
+        if (!imap.IsAuthenticated)
+        {
+            await imap.AuthenticateAsync(options.Value.ImapUsername, options.Value.ImapPassword, cancellationToken);
+            await imap.Inbox.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
+        }
     }
 
     private async Task ProcessMessage(IMessageSummary message, CancellationToken stoppingToken)
     {
+        using IServiceScope scope = serviceProvider.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
+
         InboxEmail? savedEmail = await database.InboxEmails.SingleOrDefaultAsync(email => email.UniqueId == message.UniqueId.Id, stoppingToken);
 
         if (savedEmail == null)
@@ -68,7 +89,7 @@ public class ImapReceiverService
             // Leave this message as is if it has been read by a user other than Mailist
             if (message.Flags!.Value.HasFlag(MessageFlags.Seen)) return;
 
-            await QueueEmailForProcessing(message, stoppingToken);
+            await QueueEmailForProcessing(message, database, stoppingToken);
 
             await message.Folder.AddFlagsAsync(message.UniqueId, MessageFlags.Seen, silent: true, stoppingToken);
         }
@@ -85,9 +106,11 @@ public class ImapReceiverService
                 await message.Folder.AddFlagsAsync(message.UniqueId, MessageFlags.Deleted, silent: true, stoppingToken);
             }
         }
+
+        await message.Folder.ExpungeAsync(stoppingToken);
     }
 
-    private async Task QueueEmailForProcessing(IMessageSummary message, CancellationToken stoppingToken)
+    private async Task QueueEmailForProcessing(IMessageSummary message, DatabaseContext database, CancellationToken stoppingToken)
     {
         byte[]? headerContent = null;
 

@@ -170,14 +170,6 @@ The password used to authenticate with the IMAP server.
 
 Example: `dehxo3ql5uke`
 
-#### `EmailRelay__RetrievalIntervalInMinutes`
-
-The interval in minutes at which emails are retrieved from the IMAP server.
-
-Default: `2.0` (2 minutes)  
-Min value: `0.0` (no delay between retrievals)  
-Max value: `1440.0` (once per day)
-
 #### `EmailRelay__ImapRetentionIntervalInDays`
 
 The number of days to retain emails on the IMAP server before deletion.

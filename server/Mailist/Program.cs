@@ -93,10 +93,9 @@ public class Program
             {
                 services.AddSingleton<JobQueue<EmailRelayJobController>>();
                 services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<JobQueue<EmailRelayJobController>>());
-                services.AddScoped<ImapReceiverService>();
+                services.AddHostedService<ImapReceiverHostedService>();
                 services.AddScoped<DistributionListService>();
                 services.AddScoped<MimeMessageCreationService>();
-                services.AddHostedService<EmailRelayHostedService>();
 
                 if (configuration.GetValue<bool>("SpamFilter:Enable"))
                 {
