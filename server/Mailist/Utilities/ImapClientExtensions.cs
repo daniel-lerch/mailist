@@ -53,6 +53,7 @@ public static class ImapClientExtensions
                 }
 
                 messageCount = folder.Count;
+                messagesArrived = false;
             }
         }
         finally
