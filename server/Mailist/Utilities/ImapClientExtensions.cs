@@ -51,6 +51,8 @@ public static class ImapClientExtensions
                         yield return item;
                     }
                 }
+
+                messageCount = folder.Count;
             }
         }
         finally
