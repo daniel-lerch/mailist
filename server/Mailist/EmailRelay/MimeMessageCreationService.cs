@@ -59,7 +59,7 @@ public class MimeMessageCreationService
 
         MimeMessage message = new();
         if (headers[HeaderId.Date] is { } date)
-            message.Headers.Add(HeaderId.Date, date);
+            message.Headers[HeaderId.Date] = date;
         if (inboxEmail.Subject != null)
             message.Subject = inboxEmail.Subject;
         message.From.Add(new MailboxAddress(fromName, deliveryOptions.Value.SenderAddress));

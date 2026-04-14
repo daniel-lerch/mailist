@@ -38,7 +38,7 @@ public class EmailDeliveryJobController : OneAtATimeJobController<OutboxEmail>, 
     {
         SmtpClient smtp = await GetConnection(cancellationToken);
 
-        MailboxAddress sender = new(name: null, options.Value.SenderAddress);
+        MailboxAddress sender = new(name: null, options.Value.ReturnPath ?? options.Value.SenderAddress);
         MailboxAddress recipient = new(name: null, outboxEmail.EmailAddress);
 
         using MemoryStream memoryStream = new(outboxEmail.Content);

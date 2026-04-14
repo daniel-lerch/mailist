@@ -102,6 +102,12 @@ The email address that will appear as the sender of the emails.
 
 Example: `noreply@example.org`
 
+#### `EmailDelivery__ReturnPath`
+
+The email address that will be used as the return path for bounced emails. This should be an email address that you monitor for non-delivery notifications.
+
+Default: `null` (bounces will be sent to the sender address)
+
 #### `EmailDelivery__SmtpHost`
 
 The SMTP server host used for sending emails.
