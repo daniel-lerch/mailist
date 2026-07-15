@@ -30,10 +30,12 @@ public class Program
         var cli = ConsoleApp.Create()
             .ConfigureDefaultConfiguration(builder =>
             {
-                var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-                    ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-                    ?? Environments.Production;
-
+                var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+                if (string.IsNullOrWhiteSpace(environment))
+                {
+                    environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                }
+                environment = string.IsNullOrWhiteSpace(environment) ? Environments.Production : environment.Trim();
                 builder.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
 
                 if (string.Equals(environment, Environments.Development, StringComparison.OrdinalIgnoreCase))
