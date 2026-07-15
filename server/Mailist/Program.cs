@@ -32,10 +32,13 @@ public class Program
             {
                 var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
                 if (string.IsNullOrWhiteSpace(environment))
-                {
                     environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-                }
-                environment = string.IsNullOrWhiteSpace(environment) ? Environments.Production : environment.Trim();
+
+                if (string.IsNullOrWhiteSpace(environment))
+                    environment = Environments.Production;
+                else
+                    environment = environment.Trim();
+
                 builder.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
 
                 if (string.Equals(environment, Environments.Development, StringComparison.OrdinalIgnoreCase))
