@@ -86,6 +86,27 @@ public class SpamFilterServiceIntegrationTests : IDisposable
         Assert.NotEmpty(result.Justification);
     }
 
+    [Fact]
+    public async Task ContactFormSpamIsClassifiedAsIrrelevant()
+    {
+        Assert.SkipWhen(spamFilterService == null, "Spam filter service is not enabled in configuration.");
+
+        InboxEmail email = new(
+            uniqueId: null,
+            subject: "Kontaktformular Evangelisation \"j9KWIhBic9\"",
+            from: "42wEDePDjB <wordpress@christuskirche.com>",
+            sender: null,
+            replyTo: "support@korper.nl",
+            to: "evangelisation@christuskirche.com",
+            receiver: "evangelisation@christuskirche.com",
+            header: LoadManifestResourceBytes("25939.header"),
+            body: LoadManifestResourceBytes("25939.body"));
+
+        var result = await spamFilterService.ClassifyMessage(email, TestContext.Current.CancellationToken);
+        Assert.Equal(SpamCategory.Irrelevant, result.Category);
+        Assert.NotEmpty(result.Justification);
+    }
+
     public void Dispose()
     {
         serviceProvider?.Dispose();

@@ -1,0 +1,116 @@
+X-Envelope-From: <wordpress@christuskirche.com>
+X-Envelope-To: <evangelisation@christuskirche.com>
+X-Delivery-Time: 1784112442
+X-UID: 30580
+Return-Path: <wordpress@christuskirche.com>
+ARC-Seal: i=2; a=rsa-sha256; t=1784112442; cv=pass;
+    d=strato.com; s=strato-dkim-0002;
+    b=PyXPwQ0JpXfPcuDLF35QNPyv7/TxYyt2wRqYIafZ8OOZBZmvSIbyOKJaShibtC9Hy6
+    LbemgkfFPTZS3d8ZoXK6ebGAJSGzlItP/KVsB3Q0/r4gO2lplXVQyrH8JnxeItI9mU5Y
+    Xgq3/aHoVZWHTefJtrYp+aK+mcf2QhO/RA1dGwsc8/yLgfk2wgEm2JMbLpCWyzM2lbcy
+    MWwIiPI8W52b+lt9e0mwd3CTEq+taFyjjKjQC2Dl8kU4nt8NE9dtd8SIzznNVSuHv4jV
+    AR/JzuOAP7QIGbD7nEvJftMpKrSrQgEjwZEMW1xsOqCqnrQdjo1zy41E6Yv7IUcRtk/z
+    Ws8g==
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; t=1784112442;
+    s=strato-dkim-0002; d=strato.com;
+    h=Message-ID:Subject:Reply-To:From:To:Date:Cc:Date:From:Subject:
+    Sender;
+    bh=uvI/k4oAAzQYR7yRMd4AbtPYPLhkhlnqOU95IsWzYOw=;
+    b=awXimQuldY+jTG43mwDldFtCe+oHbY3O5CDTF3gwSNTxSi/B1Ied1NEHXuUOtN3s8W
+    /JuNfsFNFWEGF76YH5TI1nrKARHguIjsvWZWUkyjelWm0qp1Av7wtZYKM8RtwvcLRjYi
+    7VnWITozxArHExG9EJBLsoI22nBGepKaJS2LcKJ7qB6rpzDFoAPh1E0CmwYbmeNmokvH
+    AbG54dv9kIiYYzq3R5h7yWbabRecm4Wu7agyfmHjKXW3iKBH2jTLwsOkj778tw/NIYri
+    5MzGCJzc/9To7ORDa6C1puVPn2lS5dgx7dQ6ElsfLlMgq91jT9hBRcXugsGihu+Vwsg2
+    zHAg==
+ARC-Authentication-Results: i=2; strato.com;
+    dmarc=pass (p=REJECT sp=NONE) header.from="christuskirche.com";
+    arc=pass (i=1) smtp.remote-ip=85.215.255.25;
+    dkim=pass header.d="christuskirche.com" header.s="strato-dkim-0003" header.a="ed25519-sha256";
+    dkim=pass header.d="christuskirche.com" header.s="strato-dkim-0002" header.a="rsa-sha256";
+    dkim-adsp=pass;
+    spf=none smtp.mailfrom="wordpress@christuskirche.com"
+Authentication-Results: strato.com;
+    dmarc=pass (p=REJECT sp=NONE) header.from="christuskirche.com";
+    arc=pass (i=1) smtp.remote-ip=85.215.255.25;
+    dkim=pass header.d="christuskirche.com" header.s="strato-dkim-0003" header.a="ed25519-sha256";
+    dkim=pass header.d="christuskirche.com" header.s="strato-dkim-0002" header.a="rsa-sha256";
+    dkim-adsp=pass;
+    spf=none smtp.mailfrom="wordpress@christuskirche.com"
+X-RZG-Expurgate: clean/normal
+X-RZG-Expurgate-ID: 149500::1784112442-3565A30D-57D07F54/0/0
+X-GEM-Spam-Flag: NO
+X-RZG-CLASS-ID: mi00
+Received-SPF: none
+    client-ip=85.215.255.25;
+    helo="mo4-p00-ob.smtp.rzone.de";
+    envelope-from="wordpress@christuskirche.com";
+    receiver=smtpin.rzone.de;
+    identity=mailfrom;
+Received: from mo4-p00-ob.smtp.rzone.de ([85.215.255.25])
+    by smtpin.rzone.de (RZmta 55.5.6 OK)
+    with ESMTPS id ee9d0126FAlMHXy
+    (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+    (Client CN "*.smtp.rzone.de", Issuer "Telekom Security ServerID OV Class 2 CA" (verified OK (+EmiG)))
+        (Client hostname verified OK)
+    for <evangelisation@christuskirche.com>;
+    Wed, 15 Jul 2026 12:47:22 +0200 (CEST)
+ARC-Seal: i=1; a=rsa-sha256; t=1784112442; cv=none;
+    d=strato.com; s=strato-dkim-0002;
+    b=sUjRQDcAbiPy5vBewj6GWVtXV+PHyO7eI5NNEaY7DpZWrnCks2aanWbftJkOfcFzW8
+    2NbUzwNUj85eH2AOZ9mqv9Ce20EHcGQjHnESoef0rE5E6llSKRg75yUWpEcxnFPQeG2t
+    DfhTzZmHREd/1TN+YrsKt5o0f3KTNw2uRv6XFgFs9c+NnjBZ9fKHwsV9+7GbDi2L6oB7
+    8vIconc5EmSmP0vP+5hV2Q3/Mk39rPXHUBVo1dXxvbEwrx93isZirooPkxcapHiav0Uk
+    x3vxzOkmRhfVX4xkQ4gmaieXNFPmu1oV3ZYze/i1BxNQiTUDObQnj+15Hvt8qA4EGQAE
+    Hybg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1784112442;
+    s=strato-dkim-0002; d=strato.com;
+    h=Message-ID:Subject:Reply-To:From:To:Date:Cc:Date:From:Subject:
+    Sender;
+    bh=uvI/k4oAAzQYR7yRMd4AbtPYPLhkhlnqOU95IsWzYOw=;
+    b=gTlTEO6pirTUy5wwTJY+d7F8XBTkGyO2quPjkZ5DD/r2VmBjU+bNGF6klC9JaxChoy
+    dYcBVT31i7qAdLiDo8x+eKxmHIk87JZKl4me/kKdd3K1CoGNXcdxFFd6al5bxwY9BNIA
+    uSZQOghyKp/F7rq7t0m0MOPNnBMIxKU/f2VYORv8CvrykstjbEkVxpy0x/uvyJ29m91H
+    ALDLwBR+LneX1s+wS1nsJctxj9aZV24ounL49lY72MPi0OtyPHctAWhSdmv6ruP7+3BB
+    v24nYRPQPe9NwdxcIYuGpJiKuuFqEYDt9gMp/p8l/QOGH9IBwdbfkbyCKM1Fl41FrfIO
+    hJCA==
+ARC-Authentication-Results: i=1; strato.com;
+    arc=none;
+    dkim=none
+X-RZG-CLASS-ID: mo00
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1784112442;
+    s=strato-dkim-0002; d=christuskirche.com;
+    h=Message-ID:Subject:Reply-To:From:To:Date:Cc:Date:From:Subject:
+    Sender;
+    bh=uvI/k4oAAzQYR7yRMd4AbtPYPLhkhlnqOU95IsWzYOw=;
+    b=dQWfzmGYN5MOhhg8ipCN3KKJER7lI7WAvZZZUv9EX5dOCZySjuXghx44KVxfaIu9+h
+    i6lUFFeNf7kZbqqypHgNRIJq8OwORi9L+SEo7hR+jRYSU+rbnGn6RbIdJsJSfpiKwt98
+    0IbUzv1uWr1O2JLpFvMJzfxR4Ca95g3dmlN3jy0NYZyL/TDqck26loYMvMiRFAaWPctO
+    4LKKE4dl7u5OCKOJuU0BVcuB2Q+mCbI6clEjDnXKsLCS5kepOqb86wG3VxLOHD1oZS5P
+    ySa2ySrWLC2rbIuOexiyHJ6Oz43e5vKGYs2OIt/8pLvIvN/N4IdqKjXOPookAb2c8YF/
+    g7uQ==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1784112442;
+    s=strato-dkim-0003; d=christuskirche.com;
+    h=Message-ID:Subject:Reply-To:From:To:Date:Cc:Date:From:Subject:
+    Sender;
+    bh=uvI/k4oAAzQYR7yRMd4AbtPYPLhkhlnqOU95IsWzYOw=;
+    b=GAuMtBErkgsND6/nrIBwlk4hChc9ikDuEgmJ10IaLSdsISoNNi95rfB5cnlU9fLoXz
+    FQXnx1BXPlR/2ZzDXHDQ==
+X-RZG-AUTH: ":O2MWcVC6fuyd8m2fCqLRFNfLNiyqeHwl7K7EoNt/BBZ+y8orYRY8L0/T0bBNalBtT/vQrbsa+HgbinBTUw=="
+Received: from christuskirche.com
+    by smtp.strato.de (RZmta 55.5.6 AUTH)
+    with ESMTPSA id Z65acb26FAlMBRk
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+        (Client did not present a certificate)
+    for <evangelisation@christuskirche.com>;
+    Wed, 15 Jul 2026 12:47:22 +0200 (CEST)
+Date: Wed, 15 Jul 2026 10:47:22 +0000
+To: evangelisation@christuskirche.com
+From: 42wEDePDjB <wordpress@christuskirche.com>
+Reply-To: support@korper.nl
+Subject: Kontaktformular Evangelisation "j9KWIhBic9"
+Message-ID: <YPAFKIPkWrDNbxpIybnEEbBvXCO7fEiA4gwN05XCpdk@christuskirche.com>
+X-Mailer: EasyWPSMTP/Mailer/smtp 2.15.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+

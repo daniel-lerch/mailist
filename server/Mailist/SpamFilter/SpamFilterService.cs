@@ -41,7 +41,7 @@ public class SpamFilterService
         jsonOptions.Converters.Add(new JsonStringEnumConverter());
     }
 
-    public async Task<ClassificationResult> ClassifyMessage(InboxEmail email, CancellationToken cancellationToken)
+    public async Task<IClassificationResult> ClassifyMessage(InboxEmail email, CancellationToken cancellationToken)
     {
         if (email.Body == null)
             throw new ArgumentException("Body must not be null for message classification", nameof(email));
@@ -66,7 +66,7 @@ public class SpamFilterService
         if (text == null)
         {
             logger.LogInformation("Email #{Id} from {From} has no text content.", email.Id, email.From);
-            return new ClassificationResult { Category = SpamCategory.NoTextContent, Justification = string.Empty };
+            return new NoTextClassification();
         }
 
         int remaining = Math.Max(0, options.Value.MaxInputLength - userPrompt.Length);
@@ -95,7 +95,7 @@ public class SpamFilterService
         catch (Exception ex)
         {
             logger.LogError(ex, "Exception while calling chat client for email #{Id} from {From}.", email.Id, email.From);
-            return new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "Exception while calling chat client: " + ex.Message };
+            return new ClassificationError("Exception while calling chat client: " + ex.Message);
         }
 
         string json = response.Text.Replace("```json", "").Replace("```", "");
@@ -106,7 +106,7 @@ public class SpamFilterService
             if (result == null)
             {
                 logger.LogError("JSON deserialization returned null for email #{Id} from {From}. Response: {Response}", email.Id, email.From, json);
-                return new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "JSON deserialization returned null. Response: " + json };
+                return new ClassificationError("JSON deserialization returned null. Response: " + json);
             }
             else
             {
@@ -117,13 +117,51 @@ public class SpamFilterService
         catch (JsonException ex)
         {
             logger.LogError(ex, "JSON deserialization error for email #{Id} from {From}. Response: {Response}", email.Id, email.From, json);
-            return new ClassificationResult { Category = SpamCategory.ClassificationFailed, Justification = "JSON deserialization error: " + ex.Message + ". Response: " + json };
+            return new ClassificationError("JSON deserialization error: " + ex.Message + ". Response: " + json);
         }
     }
 
-    public class ClassificationResult
+    public interface IClassificationResult
     {
-        public required SpamCategory Category { get; init; }
+        SpamCategory Category { get; }
+        string Justification { get; }
+    }
+
+    public class ClassificationResult : IClassificationResult
+    {
+        public SpamCategory Category
+        {
+            get
+            {
+                if (ContainsDangerousContent)
+                    return SpamCategory.Dangerous;
+                if (!ContainsMeaningfulContent || !ContentIsRelevant)
+                    return SpamCategory.Irrelevant;
+
+                return SpamCategory.Legitimate;
+            }
+        }
+
+        public required bool ContainsDangerousContent { get; init; }
+        public required bool ContainsMeaningfulContent { get; init; }
+        public required bool ContentIsRelevant { get; init; }
         public required string Justification { get; init; }
+    }
+
+    public class ClassificationError : IClassificationResult
+    {
+        public ClassificationError(string justification)
+        {
+            Justification = justification;
+        }
+
+        public SpamCategory Category => SpamCategory.ClassificationFailed;
+        public string Justification { get; }
+    }
+
+    public class NoTextClassification : IClassificationResult
+    {
+        public SpamCategory Category => SpamCategory.NoTextContent;
+        public string Justification => string.Empty;
     }
 }
