@@ -131,18 +131,11 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
             // SpamCategory.Legitimate and SpamCategory.ClassificationFailed are treated as non-spam and will be forwarded.
         }
 
+        // Forwards are enqueued without content and reconstructed from this inbox email at delivery time.
+        // This avoids storing an identical MIME blob per recipient (see EmailDeliveryService.EnqueueForward).
         MailboxAddress[] recipients = await distributionListService.GetRecipients(distributionList, cancellationToken);
         foreach (MailboxAddress address in recipients)
-        {
-            using MimeMessage preparedMessage = await mimeMessageService.PrepareForward(email, cancellationToken);
-            if (distributionList.Flags.HasFlag(DistributionListFlags.OverrideRecipient))
-            {
-                preparedMessage.To.Clear();
-                preparedMessage.Cc.Clear();
-                preparedMessage.To.Add(address);
-            }
-            await emailDelivery.Enqueue(address.Address, preparedMessage, email.Id, cancellationToken);
-        }
+            await emailDelivery.EnqueueForward(address.Address, email.Id, cancellationToken);
         email.DistributionListId = distributionList.Id;
         email.ProcessingCompletedTime = DateTime.UtcNow;
         await database.SaveChangesAsync(cancellationToken);

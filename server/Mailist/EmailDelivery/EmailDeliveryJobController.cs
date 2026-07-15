@@ -1,4 +1,6 @@
 ﻿using Mailist.EmailDelivery.Entities;
+using Mailist.EmailRelay;
+using Mailist.EmailRelay.Entities;
 using Mailist.Utilities;
 using MailKit.Net.Smtp;
 using Microsoft.EntityFrameworkCore;
@@ -18,45 +20,56 @@ public class EmailDeliveryJobController : OneAtATimeJobController<OutboxEmail>, 
     private readonly ILogger<EmailDeliveryJobController> logger;
     private readonly IOptions<EmailDeliveryOptions> options;
     private readonly DatabaseContext database;
+    private readonly MimeMessageCreationService mimeMessageService;
     private SmtpClient? smtpClient;
 
-    public EmailDeliveryJobController(ILogger<EmailDeliveryJobController> logger, IOptions<EmailDeliveryOptions> options, DatabaseContext database)
+    public EmailDeliveryJobController(ILogger<EmailDeliveryJobController> logger, IOptions<EmailDeliveryOptions> options, DatabaseContext database, MimeMessageCreationService mimeMessageService)
     {
         this.logger = logger;
         this.options = options;
         this.database = database;
+        this.mimeMessageService = mimeMessageService;
     }
 
     protected override async ValueTask<OutboxEmail?> NextPendingOrDefault(CancellationToken cancellationToken)
     {
         return await database.OutboxEmails
+            .Include(email => email.InboxEmail).ThenInclude(inbox => inbox!.DistributionList)
             .OrderBy(email => email.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
     protected override async ValueTask ExecuteJob(OutboxEmail outboxEmail, CancellationToken cancellationToken)
     {
+        byte[] content;
+        try
+        {
+            content = await BuildContent(outboxEmail, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Reconstruction should never fail (the relay guarantees the source headers and body are present and
+            // inbox emails are never deleted), but if it does we must not retry forever. Discard the message.
+            logger.LogError(ex, "Could not build content for email #{Id} to {EmailAddress}. It will be discarded",
+                outboxEmail.Id, outboxEmail.EmailAddress);
+            MoveToSent(outboxEmail, contentSize: 0, errorMessage: ex.Message);
+            await database.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
         SmtpClient smtp = await GetConnection(cancellationToken);
 
         MailboxAddress sender = new(name: null, options.Value.ReturnPath ?? options.Value.SenderAddress);
         MailboxAddress recipient = new(name: null, outboxEmail.EmailAddress);
 
-        using MemoryStream memoryStream = new(outboxEmail.Content);
+        using MemoryStream memoryStream = new(content);
         using MimeMessage mimeMessage = MimeMessage.Load(memoryStream, CancellationToken.None);
 
         try
         {
             await smtp.SendAsync(mimeMessage, sender, [recipient], cancellationToken);
 
-            database.OutboxEmails.Remove(outboxEmail);
-            database.SentEmails.Add(new SentEmail
-            {
-                Id = outboxEmail.Id,
-                InboxEmailId = outboxEmail.InboxEmailId,
-                EmailAddress = outboxEmail.EmailAddress,
-                ContentSize = outboxEmail.Content.Length,
-                DeliveryTime = DateTime.UtcNow
-            });
+            MoveToSent(outboxEmail, content.Length, errorMessage: null);
 
             // Don't cancel this operation because messages would sent twice otherwise
             await database.SaveChangesAsync(CancellationToken.None);
@@ -92,18 +105,9 @@ public class EmailDeliveryJobController : OneAtATimeJobController<OutboxEmail>, 
                 outboxEmail.Id, ex.Message);
 
             // Move this email into SentEmails table to prevent it from being attempted again
-            database.OutboxEmails.Remove(outboxEmail);
-            database.SentEmails.Add(new SentEmail
-            {
-                Id = outboxEmail.Id,
-                InboxEmailId = outboxEmail.InboxEmailId,
-                EmailAddress = outboxEmail.EmailAddress,
-                ContentSize = outboxEmail.Content.Length,
-                // The exception message includes the enhanced status code
-                // E.g. "5.7.1 Refused by local policy. Sending of SPAM is not permitted! (B-URL)"
-                ErrorMessage = ex.Message,
-                DeliveryTime = DateTime.UtcNow
-            });
+            // The exception message includes the enhanced status code
+            // E.g. "5.7.1 Refused by local policy. Sending of SPAM is not permitted! (B-URL)"
+            MoveToSent(outboxEmail, content.Length, ex.Message);
 
             await database.SaveChangesAsync(cancellationToken);
         }
@@ -113,6 +117,49 @@ public class EmailDeliveryJobController : OneAtATimeJobController<OutboxEmail>, 
                 outboxEmail.Id, outboxEmail.EmailAddress);
             throw new TransientFailureException($"Sending email #{outboxEmail.Id} to {outboxEmail.EmailAddress} failed", ex);
         }
+    }
+
+    /// <summary>
+    /// Returns the serialized MIME message to send. System messages carry their content directly; forwards are
+    /// reconstructed from the referenced inbox email so no identical blob is stored per recipient.
+    /// </summary>
+    private async ValueTask<byte[]> BuildContent(OutboxEmail outboxEmail, CancellationToken cancellationToken)
+    {
+        if (!outboxEmail.IsForward) return outboxEmail.Content;
+
+        InboxEmail? inboxEmail = outboxEmail.InboxEmail;
+        if (inboxEmail is not { Header: not null, Body: not null })
+            throw new InvalidOperationException(
+                $"Cannot reconstruct email #{outboxEmail.Id}: source inbox email #{outboxEmail.InboxEmailId} is unavailable.");
+
+        using MimeMessage message = await mimeMessageService.PrepareForward(inboxEmail, cancellationToken);
+
+        // Read the flag live rather than snapshotting it. If the distribution list was deleted after relay, its flag
+        // is gone (the foreign key is set to null on delete); default to overriding so recipients are never exposed.
+        if (inboxEmail.DistributionList?.Flags.HasFlag(DistributionListFlags.OverrideRecipient) ?? true)
+        {
+            message.To.Clear();
+            message.Cc.Clear();
+            message.To.Add(new MailboxAddress(name: null, outboxEmail.EmailAddress));
+        }
+
+        using MemoryStream memoryStream = new();
+        message.WriteTo(memoryStream, CancellationToken.None);
+        return memoryStream.ToArray();
+    }
+
+    private void MoveToSent(OutboxEmail outboxEmail, int contentSize, string? errorMessage)
+    {
+        database.OutboxEmails.Remove(outboxEmail);
+        database.SentEmails.Add(new SentEmail
+        {
+            Id = outboxEmail.Id,
+            InboxEmailId = outboxEmail.InboxEmailId,
+            EmailAddress = outboxEmail.EmailAddress,
+            ContentSize = contentSize,
+            ErrorMessage = errorMessage,
+            DeliveryTime = DateTime.UtcNow
+        });
     }
 
     private async ValueTask<SmtpClient> GetConnection(CancellationToken cancellationToken)
