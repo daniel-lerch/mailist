@@ -14,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mistral.SDK;
+using System;
 using System.Threading.Tasks;
 
 namespace Mailist;
@@ -22,9 +23,26 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        // Create ConsoleAppFramework application and configure services from appsettings
+        // Create ConsoleAppFramework application and configure services from appsettings.
+        // ConfigureDefaultConfiguration adds appsettings.json before invoking this delegate;
+        // here we layer on environment-specific settings, user secrets and environment
+        // variables so the CLI matches the configuration behaviour of the ASP.NET Core host.
         var cli = ConsoleApp.Create()
-            .ConfigureDefaultConfiguration()
+            .ConfigureDefaultConfiguration(builder =>
+            {
+                var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                    ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                    ?? Environments.Production;
+
+                builder.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
+
+                if (string.Equals(environment, Environments.Development, StringComparison.OrdinalIgnoreCase))
+                {
+                    builder.AddUserSecrets(typeof(Program).Assembly, optional: true);
+                }
+
+                builder.AddEnvironmentVariables();
+            })
             .ConfigureLogging(builder =>
             {
                 builder.AddConsole();
