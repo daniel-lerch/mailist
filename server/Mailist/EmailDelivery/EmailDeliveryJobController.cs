@@ -59,7 +59,14 @@ public class EmailDeliveryJobController : OneAtATimeJobController<OutboxEmail>, 
 
         SmtpClient smtp = await GetConnection(cancellationToken);
 
-        MailboxAddress sender = new(name: null, options.Value.ReturnPath ?? options.Value.SenderAddress);
+        string senderAddress;
+        bool receiveBounceMessages = outboxEmail.IsForward && !string.IsNullOrWhiteSpace(options.Value.ReturnPath);
+        if (receiveBounceMessages)
+            senderAddress = options.Value.ReturnPath!;
+        else
+            senderAddress = options.Value.SenderAddress;
+
+        MailboxAddress sender = new(name: null, senderAddress);
         MailboxAddress recipient = new(name: null, outboxEmail.EmailAddress);
 
         using MemoryStream memoryStream = new(content);
