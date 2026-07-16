@@ -1,4 +1,5 @@
 ﻿using Mailist.EmailDelivery;
+using Mailist.EmailDelivery.Entities;
 using Mailist.EmailRelay.Entities;
 using Mailist.SpamFilter;
 using Mailist.Utilities;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,7 +23,6 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
     private readonly DistributionListService distributionListService;
     private readonly MimeMessageCreationService mimeMessageService;
     private readonly IOptions<SpamFilterOptions> spamFilterOptions;
-    private readonly EmailDeliveryService emailDelivery;
     private readonly IServiceProvider serviceProvider;
 
     public EmailRelayJobController(
@@ -30,7 +31,6 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         DistributionListService distributionListService,
         MimeMessageCreationService emailRelay,
         IOptions<SpamFilterOptions> spamFilterOptions,
-        EmailDeliveryService emailDelivery,
         IServiceProvider serviceProvider)
     {
         this.database = database;
@@ -38,7 +38,6 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         this.distributionListService = distributionListService;
         this.mimeMessageService = emailRelay;
         this.spamFilterOptions = spamFilterOptions;
-        this.emailDelivery = emailDelivery;
         this.serviceProvider = serviceProvider;
     }
 
@@ -134,23 +133,45 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
         // Forwards are enqueued without content and reconstructed from this inbox email at delivery time.
         // This avoids storing an identical MIME blob per recipient (see EmailDeliveryService.EnqueueForward).
         MailboxAddress[] recipients = await distributionListService.GetRecipients(distributionList, cancellationToken);
-        foreach (MailboxAddress address in recipients)
-            await emailDelivery.EnqueueForward(address.Address, email.Id, cancellationToken);
+
+        database.OutboxEmails.AddRange(recipients.Select(address => new OutboxEmail(address.Address, []) { InboxEmailId = email.Id }));
+
         email.DistributionListId = distributionList.Id;
         email.ProcessingCompletedTime = DateTime.UtcNow;
         await database.SaveChangesAsync(cancellationToken);
 
+        // Free memory when processing many emails before the next delay from JobQueue.
+        database.ChangeTracker.Clear();
+
+        // Trigger delivery immediately if service is registered (it may be disabled).
+        serviceProvider.GetService<JobQueue<EmailDeliveryJobController>>()?.EnsureRunning();
+
         logger.LogInformation("Fetched {RecipientsCount} recipients for email #{Id} to {Receiver}", recipients.Length, email.Id, email.Receiver);
-        return;
     }
 
     private async ValueTask RejectEmail(InboxEmail email, MimeMessage? errorMessage, CancellationToken cancellationToken)
     {
         if (errorMessage != null)
-            await emailDelivery.Enqueue(((MailboxAddress)errorMessage.To[0]).Address, errorMessage, email.Id, cancellationToken);
+        {
+            byte[] content;
+
+            using (MemoryStream memoryStream = new())
+            {
+                errorMessage.WriteTo(memoryStream, CancellationToken.None);
+                content = memoryStream.ToArray();
+            }
+
+            database.OutboxEmails.Add(new OutboxEmail(((MailboxAddress)errorMessage.To[0]).Address, content) { InboxEmailId = email.Id });
+        }
 
         email.ProcessingCompletedTime = DateTime.UtcNow;
         await database.SaveChangesAsync(cancellationToken);
+
+        // Free memory when processing many emails before the next delay from JobQueue.
+        database.ChangeTracker.Clear();
+
+        // Trigger delivery immediately if service is registered (it may be disabled).
+        serviceProvider.GetService<JobQueue<EmailDeliveryJobController>>()?.EnsureRunning();
     }
 
     private static string? GetActualSender(InboxEmail email)

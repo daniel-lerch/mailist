@@ -113,7 +113,6 @@ public class Program
         // in isolation for debugging.
         if (emailDeliveryEnabled || emailRelayEnabled)
         {
-            services.AddScoped<EmailDeliveryService>();
             services.AddScoped<MimeMessageCreationService>();
             services.AddScoped<DistributionListService>();
         }

@@ -9,7 +9,6 @@
     "source.fixAll": "explicit"
   },
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "files.associations": {
     "tailwind.css": "tailwindcss"
   }
