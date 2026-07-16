@@ -1,0 +1,27 @@
+# Local MariaDB for development and running the test suite.
+# Credentials match the defaults in server/Mailist/appsettings.json
+# (Server=localhost;Port=3306;Database=mailist;User=root;Password=root;).
+services:
+  db:
+    image: mariadb:latest
+    restart: unless-stopped
+    environment:
+      - MARIADB_ROOT_PASSWORD=root
+      - MARIADB_DATABASE=mailist
+    ports:
+      # Bind to the loopback interface only. The root password is intentionally insecure, so the
+      # port must never be reachable from the local network — "127.0.0.1:" is what enforces that
+      # (a bare "3306:3306" would listen on all interfaces).
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mailist-mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 1s
+
+volumes:
+  mailist-mariadb-data:

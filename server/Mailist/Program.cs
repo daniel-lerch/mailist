@@ -106,30 +106,38 @@ public class Program
 
         services.AddSingleton<ChurchQueryCacheService>();
 
-        if (configuration.GetValue<bool>("EmailDelivery:Enable"))
+        bool emailDeliveryEnabled = configuration.GetValue<bool>("EmailDelivery:Enable");
+        bool emailRelayEnabled = configuration.GetValue<bool>("EmailRelay:Enable");
+
+        // The delivery and relay flags gate their background jobs independently so either can be run
+        // in isolation for debugging.
+        if (emailDeliveryEnabled || emailRelayEnabled)
+        {
+            services.AddScoped<MimeMessageCreationService>();
+            services.AddScoped<DistributionListService>();
+        }
+
+        if (emailDeliveryEnabled)
         {
             services.AddSingleton<JobQueue<EmailDeliveryJobController>>();
             services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<JobQueue<EmailDeliveryJobController>>());
-            services.AddScoped<EmailDeliveryService>();
+        }
 
-            if (configuration.GetValue<bool>("EmailRelay:Enable"))
+        if (emailRelayEnabled)
+        {
+            services.AddSingleton<JobQueue<EmailRelayJobController>>();
+            services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<JobQueue<EmailRelayJobController>>());
+            services.AddHostedService<ImapReceiverHostedService>();
+
+            if (configuration.GetValue<bool>("SpamFilter:Enable"))
             {
-                services.AddSingleton<JobQueue<EmailRelayJobController>>();
-                services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<JobQueue<EmailRelayJobController>>());
-                services.AddHostedService<ImapReceiverHostedService>();
-                services.AddScoped<DistributionListService>();
-                services.AddScoped<MimeMessageCreationService>();
-
-                if (configuration.GetValue<bool>("SpamFilter:Enable"))
+                services.AddSingleton<MimeTextExtractionService>();
+                services.AddSingleton<IChatClient>(serviceProvider =>
                 {
-                    services.AddSingleton<MimeTextExtractionService>();
-                    services.AddSingleton<IChatClient>(serviceProvider =>
-                    {
-                        var options = serviceProvider.GetRequiredService<IOptions<SpamFilterOptions>>();
-                        return new MistralClient(new APIAuthentication(options.Value.ApiKey)).Completions;
-                    });
-                    services.AddSingleton<SpamFilterService>();
-                }
+                    var options = serviceProvider.GetRequiredService<IOptions<SpamFilterOptions>>();
+                    return new MistralClient(new APIAuthentication(options.Value.ApiKey)).Completions;
+                });
+                services.AddSingleton<SpamFilterService>();
             }
         }
     }
