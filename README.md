@@ -98,3 +98,11 @@ Frontend
 
 During development the frontend running on the Vue CLI development server will use _http://localhost:10501_ as API endpoint.
 That means the backend can be running in Visual Studio with Debugger attached.
+
+<details>
+<summary>Who this document is for</summary>
+
+- **Written for:** [Victor (Server Administrator)](personas/victor-server-administrator.md)
+- **Not written for:** [Gudrun (Secretary)](personas/gudrun-secretary.md)
+
+</details>

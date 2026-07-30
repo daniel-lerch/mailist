@@ -1,4 +1,4 @@
-﻿# Mailist server configuration
+# Mailist server configuration
 
 Configuration can be set as enviroment variables or by creating a custom config file.
 I recommend to use environment variables and will explain them in the following sections.
@@ -200,3 +200,29 @@ You must increase MariaDB's `max_packet_size` if you want to increase this limit
 Default: `12288` (12 MiB)  
 Min value: `64` (64 KiB)  
 Max value: `131072` (128 MiB, almost no email server will accept such a large message)
+
+### Spam filter
+
+#### `SpamFilter__Enable`
+
+Enable or disable the spam filter. When enabled, emails will be analyzed for dangerous content, meaningfulness, and relevance before processing.
+
+Default: `false`
+
+#### `SpamFilter__ApiKey`
+
+The Mistral AI API key used by the spam filter. It sends email text content to `mistral-small-latest` for classification.
+
+Example: `7rmK2CQbkmkJa9eAYaw3ExjUxJehReyX`
+
+#### `SpamFilter__SystemPrompt`
+
+The system prompt provided to the spam filter agent. This defines the criteria and instructions for assessing emails.
+
+Default: A predefined prompt instructing the agent to check for dangerous content, meaningfulness, and relevance for churches.
+
+#### `SpamFilter__MaxInputLength`
+
+The maximum length of the input (email content) in characters that will be provided to the LLM for classification. Capped to save tokens.
+
+Default: `5000`
