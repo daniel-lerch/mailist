@@ -180,16 +180,16 @@ Example: `dehxo3ql5uke`
 
 The number of days to retain emails on the IMAP server before deletion.
 
-Default: `1.0` (24 hours)  
-Min value: `0.0` (delete emails immediately after processing)  
+Default: `1.0` (24 hours)
+Min value: `0.0` (delete emails immediately after processing)
 Max value: `87600.0` (keep emails for 10 years)
 
 #### `EmailRelay__MaxHeaderSizeInKilobytes`
 
 The maximum size of email headers in kilobytes.
 
-Default: `64` (64 KiB)  
-Min value: `16` (16 KiB, a usual email SPF, DKIM and DMARC headers is not much smaller)  
+Default: `64` (64 KiB)
+Min value: `16` (16 KiB, a usual email SPF, DKIM and DMARC headers is not much smaller)
 Max value: `1024` (1 MiB headers)
 
 #### `EmailRelay__MaxBodySizeInKilobytes`
@@ -197,8 +197,8 @@ Max value: `1024` (1 MiB headers)
 The maximum size of email bodies in kilobytes.
 You must increase MariaDB's `max_packet_size` if you want to increase this limit.
 
-Default: `12288` (12 MiB)  
-Min value: `64` (64 KiB)  
+Default: `12288` (12 MiB)
+Min value: `64` (64 KiB)
 Max value: `131072` (128 MiB, almost no email server will accept such a large message)
 
 ### Spam filter
