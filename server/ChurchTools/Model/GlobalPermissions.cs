@@ -263,9 +263,6 @@ public class GlobalPermissions
 
     public class ChurchReportPermissions
     {
-        [JsonPropertyName("edit masterdata")]
-        public required bool EditMasterdata { get; set; }
-
         [JsonPropertyName("view")]
         public required bool View { get; set; }
 
