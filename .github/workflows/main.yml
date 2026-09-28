@@ -10,7 +10,7 @@ on:
 jobs:
   server:
     name: Backend build and integration tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: Setup .NET SDK
@@ -29,11 +29,11 @@ jobs:
           sudo systemctl start mysql.service
           dotnet run -c Release --no-build --project server/Mailist -- database create
       - name: Test
-        run: dotnet test -c Release --no-build --verbosity normal
+        run: dotnet run -c Release --no-build --project server/Mailist.Tests
 
   webapp:
     name: Frontend build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: Setup NodeJS
@@ -49,7 +49,7 @@ jobs:
 
   docker:
     name: Docker build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: Docker meta
