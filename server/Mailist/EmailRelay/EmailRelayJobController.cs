@@ -85,6 +85,9 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
             return;
         }
 
+        // Save the distribution list ID immediately so that it is also persisted when the email is rejected below.
+        email.DistributionListId = distributionList.Id;
+
         // Check allowed senders
         string? sender = GetActualSender(email);
         if (!await distributionListService.IsSenderPermitted(sender, distributionList, cancellationToken))
@@ -136,7 +139,6 @@ public class EmailRelayJobController : OneAtATimeJobController<InboxEmail>
 
         database.OutboxEmails.AddRange(recipients.Select(address => new OutboxEmail(address.Address, []) { InboxEmailId = email.Id }));
 
-        email.DistributionListId = distributionList.Id;
         email.ProcessingCompletedTime = DateTime.UtcNow;
         await database.SaveChangesAsync(cancellationToken);
 

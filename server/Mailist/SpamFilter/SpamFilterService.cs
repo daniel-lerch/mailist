@@ -6,7 +6,9 @@ using MimeKit;
 using Mistral.SDK;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -90,7 +92,7 @@ public class SpamFilterService
         ChatResponse response;
         try
         {
-            response = await chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
+            response = await GetResponseWithRetryAsync(messages, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -120,6 +122,43 @@ public class SpamFilterService
             return new ClassificationError("JSON deserialization error: " + ex.Message + ". Response: " + json);
         }
     }
+
+    /// <summary>
+    /// Calls the chat client and retries transient failures (e.g. the Mistral API being temporarily unavailable)
+    /// with exponential backoff and jitter for up to <see cref="SpamFilterOptions.MaxRetryDuration"/>.
+    /// When the duration is exceeded, the last exception is rethrown so that classification fails open.
+    /// </summary>
+    private async Task<ChatResponse> GetResponseWithRetryAsync(List<ChatMessage> messages, CancellationToken cancellationToken)
+    {
+        TimeSpan maxRetryDuration = options.Value.MaxRetryDuration;
+        TimeSpan delay = TimeSpan.FromSeconds(1);
+        TimeSpan maxDelay = TimeSpan.FromSeconds(15);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        int attempt = 0;
+
+        while (true)
+        {
+            attempt++;
+            try
+            {
+                return await chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
+            }
+            catch (Exception ex) when (IsTransient(ex) && !cancellationToken.IsCancellationRequested)
+            {
+                // ±20% jitter avoids synchronized retries when many emails are processed after an outage.
+                TimeSpan jitteredDelay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * (0.8 + Random.Shared.NextDouble() * 0.4));
+                if (stopwatch.Elapsed + jitteredDelay > maxRetryDuration)
+                    throw;
+
+                logger.LogWarning(ex, "Transient error while calling chat client (attempt {Attempt}). Retrying in {Delay}.", attempt, jitteredDelay);
+                await Task.Delay(jitteredDelay, cancellationToken);
+                delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, maxDelay.Ticks));
+            }
+        }
+    }
+
+    private static bool IsTransient(Exception exception) =>
+        exception is HttpRequestException or TimeoutException or OperationCanceledException;
 
     public interface IClassificationResult
     {
